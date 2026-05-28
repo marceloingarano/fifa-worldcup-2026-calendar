@@ -1,0 +1,56 @@
+name: Update Knockout Teams
+
+on:
+  schedule:
+    # Once daily at 06:00 UTC (03:00 BRT) — after all matches of the day
+    - cron: '0 6 * 6-7 *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tournament window
+        id: check-date
+        run: |
+          TODAY=$(date +%Y-%m-%d)
+          # Only relevant from group stage end (Jun 27) until final (Jul 19)
+          if [[ "$TODAY" < "2026-06-27" || "$TODAY" > "2026-07-19" ]]; then
+            echo "Outside knockout window ($TODAY). Skipping."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "Inside knockout window ($TODAY). Proceeding."
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.check-date.outputs.skip == 'false'
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        if: steps.check-date.outputs.skip == 'false'
+        run: pip install -r requirements.txt
+
+      - name: Update knockout teams
+        if: steps.check-date.outputs.skip == 'false'
+        run: python update_knockout.py
+
+      - name: Regenerate calendar
+        if: steps.check-date.outputs.skip == 'false'
+        run: python generate_calendar.py
+
+      - name: Commit and push if changed
+        if: steps.check-date.outputs.skip == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add matches.json docs/fifa-worldcup-2026.ics
+          if git diff --staged --quiet; then
+            echo "No knockout updates. Skipping commit."
+          else
+            git commit -m "Auto-update knockout teams $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          fi

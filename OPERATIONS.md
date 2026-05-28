@@ -108,9 +108,74 @@ Editar matches.json diretamente, campo `tv`:
 ```
 Depois: `python generate_calendar.py`
 
-### Novo time classificado (knockout)
+### Atualização de times do mata-mata (knockout)
 
-Os placeholders ("Winner Group C", etc.) serão resolvidos automaticamente pela API quando os jogos acontecerem. Alternativamente, editar matches.json manualmente.
+Conforme a Copa avança, os placeholders ("Winner Group C", "Runner-up Group F") são substituídos pelos times reais.
+
+**Automático (GitHub Actions):**
+Roda diariamente às 03h BRT a partir de 27/Jun. Busca times reais via OpenLigaDB + Wikipedia fallback.
+
+**Manual:**
+```bash
+python update_knockout.py          # Auto: tenta OpenLigaDB, fallback Wikipedia
+python update_knockout.py --api    # Só OpenLigaDB
+python update_knockout.py --wiki   # Só Wikipedia
+python generate_calendar.py        # Regenera .ics
+```
+
+**Como funciona o matching:**
+- Identifica o jogo correto por **data + horário** (não só data)
+- Só atualiza se o nome atual for placeholder (`is_placeholder()`)
+- Nunca sobrescreve um time real
+- Nunca modifica jogos da fase de grupos
+- Preserva todos os outros campos (stadium, tv, streaming)
+
+### Plano B — Restaurar placeholders do mata-mata
+
+Se a atualização automática de knockout corromper o `matches.json` (time errado no jogo errado):
+
+```bash
+# 1. Restaurar matches.json completo do Wikipedia (volta aos placeholders originais)
+python fetch_matches.py
+python generate_calendar.py
+
+# 2. Verificar que os scores não foram afetados
+cat scores.json
+
+# 3. Commit e push
+git add matches.json docs/fifa-worldcup-2026.ics
+git commit -m "Restore matches.json from Wikipedia (rollback knockout update)"
+git push
+```
+
+**Por que funciona:** `fetch_matches.py` regenera o matches.json completo a partir do Wikipedia, com os placeholders originais do mata-mata. O `scores.json` é um arquivo separado e não é afetado — os placares continuam intactos.
+
+**Alternativa mais cirúrgica:** reverter só o último commit que modificou matches.json:
+```bash
+git log --oneline matches.json     # Ver histórico
+git checkout HEAD~1 -- matches.json  # Reverter para versão anterior
+python generate_calendar.py
+```
+
+## Automação (GitHub Actions)
+
+Dois workflows rodam automaticamente durante a Copa — zero intervenção necessária:
+
+| Workflow | Frequência | Período | O que faz |
+|---|---|---|---|
+| `update-scores.yml` | A cada 10min | 11/Jun – 19/Jul, 12h-00h UTC | Busca scores live + finais, regenera .ics, commit/push |
+| `update-knockout.yml` | 1x/dia (03h BRT) | 27/Jun – 19/Jul | Resolve placeholders do mata-mata, regenera .ics, commit/push |
+
+**Características:**
+- Ambos verificam se estão dentro da janela do torneio antes de executar (skip fora do período)
+- Só fazem commit se houve mudança real nos dados
+- Commits automáticos assinados como `github-actions[bot]`
+- Podem ser disparados manualmente via "Run workflow" no GitHub
+
+**Trigger manual (emergência):**
+- GitHub → Actions → selecionar workflow → "Run workflow"
+
+**Custo:** zero para repos públicos (GitHub Actions é gratuito).
 
 ## Sincronização dos celulares
 
