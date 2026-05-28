@@ -6,11 +6,7 @@ Guia de procedimentos para manter o calendário atualizado durante a Copa do Mun
 
 1. Python 3.12+ instalado
 2. Dependências: `pip install -r requirements.txt`
-3. API key configurada:
-   ```bash
-   echo "SUA_KEY" > .api_key
-   ```
-   Obtenha gratuitamente em: https://www.api-football.com/
+3. API de scores: OpenLigaDB (gratuita, sem autenticação, sem rate limit)
 
 ## Arquitetura de dados
 
@@ -20,7 +16,7 @@ matches.json          ← Estático: schedule, estádios, TV, streaming
                          Quando atualizar: só se FIFA mudar horários/estádios
 
 scores.json           ← Dinâmico: apenas resultados dos jogos
-                         Fonte: update_scores.py (API-Football)
+                         Fonte: update_scores.py (OpenLigaDB)
                          Quando atualizar: durante e após os jogos
 
 generate_calendar.py  → Merge(matches + scores) → docs/fifa-worldcup-2026.ics
@@ -41,7 +37,7 @@ git add scores.json docs/fifa-worldcup-2026.ics && git commit -m "Live scores up
 
 **Janela de jogos típica:** primeiro kick-off até último jogo + 30min de margem (prorrogação/penalidades).
 
-**O que faz:** busca jogos com status 1H, HT, 2H, ET, P, FT, AET, PEN na API e atualiza scores.json.
+**O que faz:** busca todos os jogos na OpenLigaDB e atualiza scores.json com jogos em andamento e finalizados.
 
 ### 2. Após os jogos — Consolidação final
 
@@ -63,33 +59,24 @@ python update_scores.py --status
 
 Mostra: requests usados hoje, limite restante, último call, total de scores.
 
-## Limites da API
+## API de Scores — OpenLigaDB
 
 | Parâmetro | Valor |
 |---|---|
-| Limite diário (free tier) | 100 requests |
-| Hard cap configurado | 85 requests/dia |
-| Margem de segurança | 15 requests |
-| Rate burst | 10 requests/min |
-| Reset | Meia-noite UTC |
+| URL | https://api.openligadb.de |
+| Autenticação | Nenhuma |
+| Rate limit | Sem limite documentado |
+| League shortcut | `wm26` |
+| Custo | Gratuito (Open Database License) |
 
-### Consumo estimado por cenário
+A cada chamada `--live`, o script faz 8 requests (um por matchday/fase). Sem limite diário, pode rodar quantas vezes precisar.
 
-| Cenário | Requests/dia |
-|---|---|
-| Dia com 4 jogos, janela 8h, a cada 10min | ~49 |
-| Dia com jogos espalhados em 12h | ~73 |
-| Dia sem jogos | 0 |
-| Consolidação final | 1 |
+### Fallback manual
 
-### Se o limite for atingido
-
-O script bloqueia automaticamente e mostra mensagem. Opções:
-- Aguardar reset à meia-noite UTC
-- Usar `--manual` para inserir scores manualmente:
-  ```bash
-  python update_scores.py --manual <match_number> <score_home> <score_away>
-  ```
+Se a API estiver fora do ar:
+```bash
+python update_scores.py --manual <match_number> <score_home> <score_away>
+```
 
 ## Procedimentos excepcionais
 
@@ -174,8 +161,7 @@ E2E_SAMPLE_SIZE=15 python -m pytest tests/test_e2e_consistency.py -v
 
 | Recurso | URL |
 |---|---|
-| API-Football docs | https://www.api-football.com/documentation-v3 |
-| API dashboard | https://dashboard.api-football.com/ |
+| OpenLigaDB API | https://api.openligadb.de |
 | GitHub Pages | https://marceloingarano.github.io/fifa-worldcup-2026-calendar/ |
 | Calendar URL | https://marceloingarano.github.io/fifa-worldcup-2026-calendar/fifa-worldcup-2026.ics |
 | Wikipedia schedule | https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_Group_A |

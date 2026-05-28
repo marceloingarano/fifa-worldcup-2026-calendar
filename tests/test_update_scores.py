@@ -1,7 +1,6 @@
-"""Tests for update_scores.py — score loading, saving, rate limiting, and team matching."""
+"""Tests for update_scores.py — OpenLigaDB integration, matching, and score processing."""
 
 import json
-from datetime import date
 from pathlib import Path
 
 import pytest
@@ -9,13 +8,12 @@ import pytest
 from update_scores import (
     load_scores,
     save_scores,
-    load_usage,
-    save_usage,
-    check_rate_limit,
-    normalize_team_name,
+    resolve_team_name,
     find_match_number,
-    process_api_fixtures,
-    DAILY_LIMIT,
+    extract_final_score,
+    determine_status,
+    process_api_data,
+    TEAM_SHORT_TO_NAME,
 )
 
 
@@ -27,19 +25,56 @@ def temp_scores(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def temp_usage(tmp_path, monkeypatch):
-    temp_file = tmp_path / ".api_usage.json"
-    monkeypatch.setattr("update_scores.USAGE_FILE", temp_file)
-    return temp_file
-
-
-@pytest.fixture
 def sample_matches():
     return [
         {"match_number": 7, "home": "Brazil", "away": "Morocco", "date": "2026-06-13"},
         {"match_number": 8, "home": "Haiti", "away": "Scotland", "date": "2026-06-13"},
         {"match_number": 1, "home": "Mexico", "away": "South Africa", "date": "2026-06-11"},
     ]
+
+
+@pytest.fixture
+def api_match_finished():
+    return {
+        "matchIsFinished": True,
+        "matchDateTimeUTC": "2026-06-13T22:00:00Z",
+        "team1": {"teamName": "Brasilien", "shortName": "BRA"},
+        "team2": {"teamName": "Marokko", "shortName": "MAR"},
+        "matchResults": [
+            {"resultOrderID": 1, "resultName": "Endergebnis",
+             "pointsTeam1": 2, "pointsTeam2": 0},
+            {"resultOrderID": 5, "resultName": "Halbzeit",
+             "pointsTeam1": 1, "pointsTeam2": 0},
+        ],
+        "goals": [],
+    }
+
+
+@pytest.fixture
+def api_match_live():
+    return {
+        "matchIsFinished": False,
+        "matchDateTimeUTC": "2026-06-13T22:00:00Z",
+        "team1": {"teamName": "Brasilien", "shortName": "BRA"},
+        "team2": {"teamName": "Marokko", "shortName": "MAR"},
+        "matchResults": [
+            {"resultOrderID": 5, "resultName": "Halbzeit",
+             "pointsTeam1": 1, "pointsTeam2": 0},
+        ],
+        "goals": [],
+    }
+
+
+@pytest.fixture
+def api_match_not_started():
+    return {
+        "matchIsFinished": False,
+        "matchDateTimeUTC": "2026-06-13T22:00:00Z",
+        "team1": {"teamName": "Brasilien", "shortName": "BRA"},
+        "team2": {"teamName": "Marokko", "shortName": "MAR"},
+        "matchResults": [],
+        "goals": [],
+    }
 
 
 class TestLoadSaveScores:
@@ -61,65 +96,33 @@ class TestLoadSaveScores:
         assert json.loads(temp_scores.read_text())["1"]["score_home"] == 1
 
 
-class TestRateLimiting:
-    def test_under_limit_returns_true(self):
-        usage = {"date": str(date.today()), "count": 0, "calls": []}
-        assert check_rate_limit(usage) is True
+class TestResolveTeamName:
+    def test_known_short_codes(self):
+        match = {"team1": {"teamName": "Brasilien", "shortName": "BRA"}}
+        assert resolve_team_name(match, "team1") == "Brazil"
 
-    def test_at_limit_returns_false(self):
-        usage = {"date": str(date.today()), "count": DAILY_LIMIT, "calls": []}
-        assert check_rate_limit(usage) is False
+    def test_all_48_teams_mapped(self):
+        expected_teams = {
+            "Mexico", "South Africa", "South Korea", "Czech Republic",
+            "Canada", "Bosnia and Herzegovina", "Qatar", "Switzerland",
+            "Brazil", "Morocco", "Haiti", "Scotland",
+            "United States", "Paraguay", "Australia", "Turkey",
+            "Germany", "Curaçao", "Ivory Coast", "Ecuador",
+            "Netherlands", "Japan", "Sweden", "Tunisia",
+            "Belgium", "Egypt", "Iran", "New Zealand",
+            "Spain", "Cape Verde", "Saudi Arabia", "Uruguay",
+            "France", "Senegal", "Iraq", "Norway",
+            "Argentina", "Algeria", "Austria", "Jordan",
+            "Portugal", "DR Congo", "Uzbekistan", "Colombia",
+            "England", "Croatia", "Ghana", "Panama",
+        }
+        mapped = set(TEAM_SHORT_TO_NAME.values())
+        missing = expected_teams - mapped
+        assert not missing, f"Teams not in TEAM_SHORT_TO_NAME: {missing}"
 
-    def test_over_limit_returns_false(self):
-        usage = {"date": str(date.today()), "count": DAILY_LIMIT + 10, "calls": []}
-        assert check_rate_limit(usage) is False
-
-    def test_usage_resets_on_new_day(self, temp_usage):
-        old_data = {"date": "2026-01-01", "count": 99, "calls": []}
-        temp_usage.write_text(json.dumps(old_data))
-        usage = load_usage()
-        assert usage["count"] == 0
-        assert usage["date"] == str(date.today())
-
-    def test_usage_persists_same_day(self, temp_usage):
-        today_data = {"date": str(date.today()), "count": 42, "calls": []}
-        temp_usage.write_text(json.dumps(today_data))
-        usage = load_usage()
-        assert usage["count"] == 42
-
-
-class TestNormalizeTeamName:
-    def test_usa_variants(self):
-        assert normalize_team_name("USA") == "United States"
-
-    def test_korea(self):
-        assert normalize_team_name("Korea Republic") == "South Korea"
-
-    def test_turkey_variants(self):
-        assert normalize_team_name("Turkiye") == "Turkey"
-        assert normalize_team_name("Türkiye") == "Turkey"
-
-    def test_ivory_coast(self):
-        assert normalize_team_name("Côte d'Ivoire") == "Ivory Coast"
-        assert normalize_team_name("Cote D'Ivoire") == "Ivory Coast"
-
-    def test_bosnia(self):
-        assert normalize_team_name("Bosnia Herzegovina") == "Bosnia and Herzegovina"
-        assert normalize_team_name("Bosnia & Herzegovina") == "Bosnia and Herzegovina"
-
-    def test_dr_congo(self):
-        assert normalize_team_name("Congo DR") == "DR Congo"
-
-    def test_curacao(self):
-        assert normalize_team_name("Curacao") == "Curaçao"
-
-    def test_czechia(self):
-        assert normalize_team_name("Czechia") == "Czech Republic"
-
-    def test_already_correct_passes_through(self):
-        assert normalize_team_name("Brazil") == "Brazil"
-        assert normalize_team_name("France") == "France"
-        assert normalize_team_name("Argentina") == "Argentina"
+    def test_unknown_code_falls_back_to_german_name(self):
+        match = {"team1": {"teamName": "UnknownTeam", "shortName": "UNK"}}
+        assert resolve_team_name(match, "team1") == "UnknownTeam"
 
 
 class TestFindMatchNumber:
@@ -127,12 +130,8 @@ class TestFindMatchNumber:
         result = find_match_number(sample_matches, "Brazil", "Morocco", "2026-06-13")
         assert result == 7
 
-    def test_reversed_teams_still_matches(self, sample_matches):
+    def test_reversed_teams(self, sample_matches):
         result = find_match_number(sample_matches, "Morocco", "Brazil", "2026-06-13")
-        assert result == 7
-
-    def test_normalized_name_matches(self, sample_matches):
-        result = find_match_number(sample_matches, "Brazil", "Morocco", "2026-06-13")
         assert result == 7
 
     def test_wrong_date_returns_none(self, sample_matches):
@@ -144,106 +143,69 @@ class TestFindMatchNumber:
         assert result is None
 
 
-class TestProcessApiFixtures:
-    def test_processes_finished_match(self, sample_matches):
+class TestExtractFinalScore:
+    def test_finished_match(self, api_match_finished):
+        home, away = extract_final_score(api_match_finished)
+        assert home == 2
+        assert away == 0
+
+    def test_live_match_returns_halftime(self, api_match_live):
+        home, away = extract_final_score(api_match_live)
+        assert home == 1
+        assert away == 0
+
+    def test_not_started_returns_none(self, api_match_not_started):
+        home, away = extract_final_score(api_match_not_started)
+        assert home is None
+        assert away is None
+
+
+class TestDetermineStatus:
+    def test_finished(self, api_match_finished):
+        assert determine_status(api_match_finished) == "FT"
+
+    def test_live(self, api_match_live):
+        assert determine_status(api_match_live) == "LIVE"
+
+    def test_not_started(self, api_match_not_started):
+        assert determine_status(api_match_not_started) == "NS"
+
+
+class TestProcessApiData:
+    def test_processes_finished_match(self, sample_matches, api_match_finished):
         scores = {}
-        api_data = {
-            "response": [{
-                "fixture": {
-                    "date": "2026-06-13T18:00:00+00:00",
-                    "status": {"short": "FT", "elapsed": 90}
-                },
-                "teams": {
-                    "home": {"name": "Brazil"},
-                    "away": {"name": "Morocco"}
-                },
-                "goals": {"home": 2, "away": 0}
-            }]
-        }
-        updated = process_api_fixtures(api_data, sample_matches, scores)
+        updated = process_api_data([api_match_finished], sample_matches, scores)
         assert updated == 1
         assert scores["7"]["score_home"] == 2
         assert scores["7"]["score_away"] == 0
         assert scores["7"]["status"] == "FT"
 
-    def test_processes_live_match(self, sample_matches):
+    def test_processes_live_match(self, sample_matches, api_match_live):
         scores = {}
-        api_data = {
-            "response": [{
-                "fixture": {
-                    "date": "2026-06-13T18:00:00+00:00",
-                    "status": {"short": "2H", "elapsed": 67}
-                },
-                "teams": {
-                    "home": {"name": "Brazil"},
-                    "away": {"name": "Morocco"}
-                },
-                "goals": {"home": 1, "away": 0}
-            }]
-        }
-        updated = process_api_fixtures(api_data, sample_matches, scores)
+        updated = process_api_data([api_match_live], sample_matches, scores)
         assert updated == 1
-        assert scores["7"]["status"] == "2H"
+        assert scores["7"]["status"] == "LIVE"
 
-    def test_skips_matches_without_goals(self, sample_matches):
+    def test_skips_not_started(self, sample_matches, api_match_not_started):
         scores = {}
-        api_data = {
-            "response": [{
-                "fixture": {
-                    "date": "2026-06-13T18:00:00+00:00",
-                    "status": {"short": "NS", "elapsed": None}
-                },
-                "teams": {
-                    "home": {"name": "Brazil"},
-                    "away": {"name": "Morocco"}
-                },
-                "goals": {"home": None, "away": None}
-            }]
-        }
-        updated = process_api_fixtures(api_data, sample_matches, scores)
-        assert updated == 0
-        assert len(scores) == 0
-
-    def test_does_not_update_if_same_score(self, sample_matches):
-        scores = {"7": {
-            "score_home": 2, "score_away": 0, "status": "FT",
-            "api_home": "Brazil", "api_away": "Morocco"
-        }}
-        api_data = {
-            "response": [{
-                "fixture": {
-                    "date": "2026-06-13T18:00:00+00:00",
-                    "status": {"short": "FT", "elapsed": 90}
-                },
-                "teams": {
-                    "home": {"name": "Brazil"},
-                    "away": {"name": "Morocco"}
-                },
-                "goals": {"home": 2, "away": 0}
-            }]
-        }
-        updated = process_api_fixtures(api_data, sample_matches, scores)
+        updated = process_api_data([api_match_not_started], sample_matches, scores)
         assert updated == 0
 
-    def test_unmatched_fixture_warns(self, sample_matches, capsys):
+    def test_only_finished_skips_live(self, sample_matches, api_match_live):
         scores = {}
-        api_data = {
-            "response": [{
-                "fixture": {
-                    "date": "2026-06-20T18:00:00+00:00",
-                    "status": {"short": "FT", "elapsed": 90}
-                },
-                "teams": {
-                    "home": {"name": "Unknown FC"},
-                    "away": {"name": "Mystery United"}
-                },
-                "goals": {"home": 1, "away": 1}
-            }]
-        }
-        updated = process_api_fixtures(api_data, sample_matches, scores)
+        updated = process_api_data([api_match_live], sample_matches, scores, only_finished=True)
         assert updated == 0
-        captured = capsys.readouterr()
-        assert "WARN" in captured.out
+
+    def test_does_not_update_if_same(self, sample_matches, api_match_finished):
+        scores = {"7": {"score_home": 2, "score_away": 0, "status": "FT"}}
+        updated = process_api_data([api_match_finished], sample_matches, scores)
+        assert updated == 0
+
+    def test_updates_if_score_changed(self, sample_matches, api_match_finished):
+        scores = {"7": {"score_home": 1, "score_away": 0, "status": "LIVE"}}
+        updated = process_api_data([api_match_finished], sample_matches, scores)
+        assert updated == 1
+        assert scores["7"]["score_home"] == 2
 
 
 class TestScoresJsonIntegrity:
