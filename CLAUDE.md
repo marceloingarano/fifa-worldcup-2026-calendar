@@ -89,7 +89,9 @@ Rules:
 | `update-knockout.yml` | Daily 06:00 UTC, Jun 27 – Jul 19 | Resolves knockout placeholders → auto-commit |
 | `tests.yml` | Every push/PR | Unit tests + E2E consistency |
 
-Both skip execution outside tournament window via date check.
+Scheduled triggers skip execution outside tournament window via date check.
+Manual triggers (`workflow_dispatch`) bypass the date check for testing.
+Requires repo Settings → Actions → Workflow permissions → "Read and write permissions" for auto-commit.
 
 ## Testing
 

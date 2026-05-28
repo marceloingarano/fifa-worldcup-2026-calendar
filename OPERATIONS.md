@@ -172,8 +172,11 @@ Dois workflows rodam automaticamente durante a Copa — zero intervenção neces
 - Commits automáticos assinados como `github-actions[bot]`
 - Podem ser disparados manualmente via "Run workflow" no GitHub
 
-**Trigger manual (emergência):**
+**Trigger manual (teste ou emergência):**
 - GitHub → Actions → selecionar workflow → "Run workflow"
+- O trigger manual **ignora a verificação de data** — executa a qualquer momento independente da janela do torneio
+
+**Pré-requisito:** Settings → Actions → Workflow permissions → **"Read and write permissions"** (necessário para o auto-commit/push)
 
 **Custo:** zero para repos públicos (GitHub Actions é gratuito).
 
