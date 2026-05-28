@@ -193,34 +193,80 @@ Rodam automaticamente antes de cada commit (pre-commit hook) e em cada push (Git
 ### Comandos de execução
 
 ```bash
-# Todos os testes (unit + E2E)
+# Todos os testes (152 testes: unit + security + E2E)
 python -m pytest tests/ -v
 
 # Só testes unitários (rápido, sem rede)
 python -m pytest tests/ --ignore=tests/test_e2e_consistency.py
+
+# Só testes de segurança
+python -m pytest tests/test_security.py -v
 
 # Só E2E (valida .ics contra Wikipedia, requer internet)
 python -m pytest tests/test_e2e_consistency.py -v
 
 # E2E com mais amostras (default: 5 jogos aleatórios)
 E2E_SAMPLE_SIZE=15 python -m pytest tests/test_e2e_consistency.py -v
+
+# Validação de segurança standalone (escaneia o .ics gerado)
+python -m security.validator
 ```
 
 ### O que os testes garantem
 
-**Unitários (94 testes):**
+**Unitários + Knockout (67 testes):**
 - Integridade de matches.json (104 jogos, 6 por grupo, datas válidas, sem duplicatas)
-- Formato correto dos títulos (com/sem placar, bandeiras, nomes PT-BR)
+- Formato correto dos títulos (com/sem placar, bandeiras, BRASIL uppercase)
 - Merge scores não corrompe dados
-- Rate limit funciona corretamente
 - Normalização de nomes de times cobre variantes da API
 - Match por data + times funciona em ambas as direções (home/away invertido)
+- Knockout: nunca sobrescreve time real, matching por data + horário
+
+**Segurança (37 testes):**
+- URLs só de domínios allowlisted (rejeita qualquer outro)
+- CRLF injection bloqueada
+- Propriedades proibidas (VALARM, ATTACH, ATTENDEE, TZURL) detectadas e bloqueadas
+- .ics gerado escaneado contra todos os vetores de ataque
+- matches.json escaneado contra URLs escondidas e script tags
 
 **E2E (8 testes):**
 - Pega jogos aleatórios do .ics e valida contra Wikipedia
 - Compara: datas, horários, estádios, nomes dos times, placares
 - Detecta drift entre nossos dados e a fonte oficial
 - Falha se o .ics tiver placar divergente do Wikipedia
+
+## Segurança
+
+### Validação de segurança
+
+Toda geração do .ics passa por duas camadas:
+1. **Sanitizer** (`security/sanitizer.py`) — filtra cada evento antes de incluir no .ics
+2. **Validator** (`security/validator.py`) — escaneia o .ics final antes de publicar
+
+```bash
+# Validar o .ics manualmente
+python -m security.validator
+
+# Rodar testes de segurança
+python -m pytest tests/test_security.py -v
+```
+
+### Adicionar novo domínio de streaming
+
+Editar `security/allowed_domains.json` e adicionar o domínio exato:
+```bash
+# Exemplo: adicionar sportv.globo.com
+# Editar security/allowed_domains.json → adicionar "sportv.globo.com"
+python generate_calendar.py
+python -m security.validator
+```
+
+### Branch protection (GitHub)
+
+Configurado em Settings → Branches → main:
+- PRs obrigatórios para merge
+- Status checks (testes) devem passar
+- Force push bloqueado
 
 ## Referências
 

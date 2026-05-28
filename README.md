@@ -11,14 +11,14 @@ https://marceloingarano.github.io/fifa-worldcup-2026-calendar/fifa-worldcup-2026
 | Platform | How to |
 |---|---|
 | **iPhone** | Settings → Calendar → Accounts → Add Account → Other → Add Subscribed Calendar → paste URL |
-| **Android** | Google Calendar web → Settings → Add calendar → From URL → paste URL |
+| **Android** | Google Calendar web (desktop mode) → + Other calendars → From URL → paste URL |
 | **Outlook** | Calendar → Add calendar → Subscribe from web → paste URL |
 
 ## What you get
 
 ```
-🇧🇷 Brasil vs Marrocos 🇲🇦 — Grupo C         (before match)
-🇧🇷 Brasil 2 x 0 Marrocos 🇲🇦 — Grupo C     (with score)
+🇧🇷 BRASIL vs Marrocos 🇲🇦 — Grupo C         (before match)
+🇧🇷 BRASIL 2 x 0 Marrocos 🇲🇦 — Grupo C     (with score)
 
 Location: MetLife Stadium, East Rutherford, EUA
 Notes:    🕐 18:00 (ET) | 📺 CazéTV | 🔗 youtube.com/@CasimiroMiguel
@@ -51,8 +51,9 @@ python update_scores.py --live     # Fetch live + final scores
 python update_scores.py --final    # Consolidate finished matches only
 python update_knockout.py          # Resolve knockout placeholders
 python generate_calendar.py        # Regenerate .ics
+python -m security.validator       # Validate .ics security
 
-python -m pytest tests/ -v         # Run 115 tests
+python -m pytest tests/ -v         # Run 152 tests
 ```
 
-See [OPERATIONS.md](OPERATIONS.md) for full procedures, rollback plans, and automation details.
+See [OPERATIONS.md](OPERATIONS.md) for full procedures, rollback plans, security details, and automation.

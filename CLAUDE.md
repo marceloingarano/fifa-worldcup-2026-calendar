@@ -24,10 +24,12 @@ Generates and serves an .ics calendar file with all 104 FIFA World Cup 2026 matc
 ```
 matches.json           → Static: schedule, stadiums, TV, streaming (source: Wikipedia)
 scores.json            → Dynamic: match results only (source: OpenLigaDB API)
-generate_calendar.py   → Merges both → docs/fifa-worldcup-2026.ics
+generate_calendar.py   → Merges both → sanitize_event() → docs/fifa-worldcup-2026.ics
+security/validator.py  → Post-generation scan (CI gate)
 ```
 
 Separation prevents score updates from corrupting schedule data and vice-versa.
+Sanitizer filters every event before .ics generation. Validator scans the output before publishing.
 
 ## Key files
 
@@ -39,16 +41,19 @@ Separation prevents score updates from corrupting schedule data and vice-versa.
 | `generate_calendar.py` | Merges matches + scores → builds .ics with icalendar library. Event format defined here. |
 | `fetch_matches.py` | Scrapes Wikipedia (lxml parser, `div.footballbox` class) to populate matches.json. |
 | `update_scores.py` | Fetches live/final scores from OpenLigaDB (free, no auth). |
-| `update_knockout.py` | Resolves placeholder teams ("Winner Group C" → "Brazil") via OpenLigaDB + Wikipedia fallback. |
-| `docs/index.html` | Landing page (PT-BR) with subscription instructions. |
+| `update_knockout.py` | Resolves placeholder teams ("Winner Group C" → "Brazil") via OpenLigaDB + Wikipedia fallback. Matches by date + time. |
+| `security/sanitizer.py` | Input sanitization: URL allowlist, CRLF removal, forbidden properties, field limits. |
+| `security/validator.py` | Post-generation .ics scanner. Runs standalone or in CI. |
+| `security/allowed_domains.json` | Allowlisted streaming/TV domains. URLs outside this list are rejected. |
+| `docs/index.html` | Landing page (PT-BR) with subscription instructions per platform. |
 | `docs/fifa-worldcup-2026.ics` | Generated output served by GitHub Pages. |
 | `OPERATIONS.md` | Full operational procedures, rollback plans, automation details. |
 
 ## Event format in .ics
 
 ```
-Title:    🇧🇷 Brasil vs Marrocos 🇲🇦 — Grupo C       (no score)
-Title:    🇧🇷 Brasil 2 x 0 Marrocos 🇲🇦 — Grupo C   (with score)
+Title:    🇧🇷 BRASIL vs Marrocos 🇲🇦 — Grupo C       (no score)
+Title:    🇧🇷 BRASIL 2 x 0 Marrocos 🇲🇦 — Grupo C   (with score)
 Location: MetLife Stadium, East Rutherford, EUA
 Notes:    FIFA World Cup 2026 — Grupo C
           Jogo #7
@@ -59,6 +64,7 @@ Notes:    FIFA World Cup 2026 — Grupo C
 
 Rules:
 - Team names always in PT-BR (via `flags.get_name_pt()`)
+- BRASIL is always uppercase (target audience is Brazilian)
 - Score appears in title when `score_home` is not None (live or finished)
 - "vs" when no score, "X x Y" with score
 - Location field = stadium, city (native calendar location field)
@@ -85,27 +91,34 @@ Both skip execution outside tournament window via date check.
 ## Testing
 
 ```bash
-python -m pytest tests/ -v         # All 115 tests
-python -m pytest tests/ --ignore=tests/test_e2e_consistency.py  # Unit only (no network)
+python -m pytest tests/ -v         # All 152 tests
+python -m pytest tests/ --ignore=tests/test_e2e_consistency.py  # Unit + security (no network)
 python -m pytest tests/test_e2e_consistency.py -v               # E2E vs Wikipedia
+python -m pytest tests/test_security.py -v                      # Security tests only
 E2E_SAMPLE_SIZE=15 python -m pytest tests/test_e2e_consistency.py  # More samples
+python -m security.validator                                    # Standalone .ics scan
 ```
 
 Tests enforce:
 - matches.json integrity (104 matches, 6/group, valid dates, no duplicates)
-- Title format with/without scores
+- Title format with/without scores, BRASIL uppercase
 - Score merge doesn't mutate original data
 - Team name normalization covers all API variants
 - Knockout matching uses date + time (prevents cross-assignment)
 - E2E: random matches validated against live Wikipedia
+- Security: URL allowlist, CRLF injection, forbidden properties, field limits
+- .ics output scanned for VALARM, ATTACH, ATTENDEE, non-HTTPS URLs
 
 ## Important constraints
 
 - `matches.json` NEVER contains score fields — those live in `scores.json`
 - `update_knockout.py` only modifies teams that are placeholders (`is_placeholder()`) — never overwrites real team names
 - Knockout matching uses date + local time to differentiate multiple matches on same day
-- Pre-commit hook runs all tests before allowing commits
+- Pre-commit hook runs all 152 tests before allowing commits
 - Calendar refresh interval is 6 hours (PT6H in .ics)
+- All URLs in the .ics must be HTTPS and from `security/allowed_domains.json`
+- Branch protection requires PR + passing status checks for merge to main
+- generate_calendar.py passes every event through `security.sanitizer.sanitize_event()` before adding to .ics
 
 ## Wikipedia parsing notes
 
