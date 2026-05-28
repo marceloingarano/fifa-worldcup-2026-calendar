@@ -15,6 +15,11 @@ jobs:
       - name: Check tournament window
         id: check-date
         run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Manual trigger — skipping date check."
+            echo "skip=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
           TODAY=$(date +%Y-%m-%d)
           # Only relevant from group stage end (Jun 27) until final (Jul 19)
           if [[ "$TODAY" < "2026-06-27" || "$TODAY" > "2026-07-19" ]]; then
