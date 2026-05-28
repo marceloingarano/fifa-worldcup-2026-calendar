@@ -121,6 +121,29 @@ Tests enforce:
 **Corrupted scores.json:** `echo '{}' > scores.json` (scores rebuild on next API call)
 **Bad knockout update:** `git checkout HEAD~1 -- matches.json`
 
+## Security
+
+4-layer security model protects subscribers from malicious content:
+
+```
+security/
+├── sanitizer.py         ← Input sanitization (called by generate_calendar.py)
+├── allowed_domains.json ← URL allowlist (youtube, globo, cazetv, etc.)
+└── validator.py         ← Post-generation .ics scan (runs in CI)
+```
+
+**Protections:**
+- URL allowlist: only trusted streaming domains (rejects anything else)
+- CRLF injection removal from all text fields
+- Forbidden ICS properties blocked: VALARM, ATTACH, ATTENDEE, TZURL, ORGANIZER
+- Forbidden schemes blocked: javascript:, data:, file://, ftp://, vbscript:
+- Field length limits: SUMMARY 200, DESCRIPTION 500, LOCATION 200
+- matches.json scanned for hidden URLs and script tags
+- Branch protection: PRs required, status checks must pass, force push blocked
+
+**Adding a new streaming domain:**
+Add to `security/allowed_domains.json` — must be exact domain (no wildcards).
+
 ## Tech stack
 
 - Python 3.12+
