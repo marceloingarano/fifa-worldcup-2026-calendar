@@ -3,3 +3,5 @@ __pycache__/
 .venv/
 venv/
 .env
+.api_key
+.api_usage.json
