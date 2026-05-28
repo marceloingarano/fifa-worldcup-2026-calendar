@@ -25,6 +25,9 @@ jobs:
       - name: Verify calendar generation
         run: python generate_calendar.py
 
+      - name: Security validation
+        run: python -m security.validator
+
   e2e-tests:
     runs-on: ubuntu-latest
     steps:

@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from icalendar import Calendar, Event
 
 from flags import get_flag, get_name_pt, get_tz_abbr
+from security.sanitizer import sanitize_event
 
 MATCHES_FILE = Path(__file__).parent / "matches.json"
 SCORES_FILE = Path(__file__).parent / "scores.json"
@@ -73,12 +74,19 @@ def add_match_event(cal: Calendar, match: dict) -> None:
     dt_start = datetime.strptime(f"{match['date']} {match['time']}", "%Y-%m-%d %H:%M").replace(tzinfo=tz)
     dt_end = dt_start + timedelta(minutes=MATCH_DURATION_MINUTES)
 
+    title = build_event_title(match)
+    description = build_event_description(match)
+    location = build_event_location(match)
+    url_fields = [match.get("streaming", "")]
+
+    sanitized = sanitize_event(title, description, location, url_fields)
+
     event = Event()
-    event.add("summary", build_event_title(match))
+    event.add("summary", sanitized["title"])
     event.add("dtstart", dt_start)
     event.add("dtend", dt_end)
-    event.add("location", build_event_location(match))
-    event.add("description", build_event_description(match))
+    event.add("location", sanitized["location"])
+    event.add("description", sanitized["description"])
     event.add("uid", f"fifawc2026-match{match['match_number']:03d}@github.com")
     event.add("dtstamp", datetime.now(tz=ZoneInfo("UTC")))
     event.add("categories", [match["stage"]])
