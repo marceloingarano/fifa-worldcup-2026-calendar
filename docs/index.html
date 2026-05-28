@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FIFA World Cup 2026 Calendar</title>
+    <title>Copa do Mundo FIFA 2026 — Calendário</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -13,46 +13,62 @@
         .subscribe-box { background: #16213e; border-radius: 12px; padding: 2rem; margin: 1.5rem 0; }
         .subscribe-box h2 { font-size: 1.1rem; margin-bottom: 1rem; color: #4fc3f7; }
         .url-box { background: #0f3460; border-radius: 8px; padding: 0.8rem; word-break: break-all; font-family: monospace; font-size: 0.85rem; color: #81d4fa; cursor: pointer; }
+        .url-box.copied { color: #a5d6a7; }
+        .format-box { background: #16213e; border-radius: 12px; padding: 1.5rem; margin: 1.5rem 0; text-align: left; }
+        .format-box h2 { font-size: 1rem; margin-bottom: 0.8rem; color: #4fc3f7; }
+        .format-box pre { font-size: 0.8rem; color: #ccc; line-height: 1.6; white-space: pre-wrap; }
         .instructions { text-align: left; margin-top: 2rem; }
         .instructions h3 { margin: 1.2rem 0 0.5rem; color: #4fc3f7; font-size: 0.95rem; }
         .instructions ol { padding-left: 1.2rem; line-height: 1.8; color: #ccc; font-size: 0.9rem; }
         .badge { display: inline-block; background: #4fc3f7; color: #1a1a2e; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-right: 0.3rem; }
+        .info { color: #888; font-size: 0.8rem; margin-top: 2rem; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>⚽ FIFA World Cup 2026</h1>
-        <p class="subtitle">Subscribe to get all matches in your calendar — free, auto-updated.</p>
+        <h1>Copa do Mundo FIFA 2026</h1>
+        <p class="subtitle">Todos os 104 jogos no seu calendário. Gratuito, atualizado com placares.</p>
 
         <div class="subscribe-box">
-            <h2>Calendar Subscription URL</h2>
-            <div class="url-box" onclick="navigator.clipboard.writeText(this.textContent).then(()=>this.style.color='#a5d6a7')" title="Click to copy">
+            <h2>URL de Assinatura</h2>
+            <div class="url-box" onclick="navigator.clipboard.writeText(this.textContent.trim()).then(()=>{this.classList.add('copied');this.title='Copiado!'})" title="Clique para copiar">
                 https://marceloingarano.github.io/fifa-worldcup-2026-calendar/fifa-worldcup-2026.ics
             </div>
+        </div>
+
+        <div class="format-box">
+            <h2>Como aparece no calendário</h2>
+<pre>🇧🇷 Brasil vs Marrocos 🇲🇦 — Grupo C
+🇧🇷 Brasil 2 x 0 Marrocos 🇲🇦 — Grupo C  (com placar)
+
+Local: MetLife Stadium, East Rutherford, EUA
+Notas: 🕐 18:00 (ET) | 📺 Globo / CazéTV</pre>
         </div>
 
         <div class="instructions">
             <h3><span class="badge">iPhone</span> Apple Calendar</h3>
             <ol>
-                <li>Settings → Calendar → Accounts → Add Account</li>
-                <li>Select "Other" → Add Subscribed Calendar</li>
-                <li>Paste the URL above → Subscribe</li>
+                <li>Ajustes → Calendário → Contas → Adicionar Conta</li>
+                <li>Selecione "Outras" → Adicionar Assinatura de Calendário</li>
+                <li>Cole a URL acima → Assinar</li>
             </ol>
 
             <h3><span class="badge">Android</span> Google Calendar</h3>
             <ol>
-                <li>Open Google Calendar on web (calendar.google.com)</li>
-                <li>Settings → Add calendar → From URL</li>
-                <li>Paste the URL above → Add calendar</li>
+                <li>Abra o Google Calendar na web (calendar.google.com)</li>
+                <li>Configurações → Adicionar agenda → De URL</li>
+                <li>Cole a URL acima → Adicionar agenda</li>
             </ol>
 
             <h3><span class="badge">Outlook</span> Microsoft Outlook</h3>
             <ol>
-                <li>Open Outlook → Calendar → Add calendar</li>
-                <li>Select "Subscribe from web"</li>
-                <li>Paste the URL above → Import</li>
+                <li>Abra o Outlook → Calendário → Adicionar calendário</li>
+                <li>Selecione "Assinar da web"</li>
+                <li>Cole a URL acima → Importar</li>
             </ol>
         </div>
+
+        <p class="info">104 jogos • 11 Jun – 19 Jul 2026 • EUA, Canadá e México</p>
     </div>
 </body>
 </html>

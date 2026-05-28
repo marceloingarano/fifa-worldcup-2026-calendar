@@ -26,10 +26,23 @@ https://marceloingarano.github.io/fifa-worldcup-2026-calendar/fifa-worldcup-2026
 
 ## Event Format
 
-Each event shows:
 ```
-🇧🇷 Brazil vs 🇷🇸 Serbia (2-0)
-📍 MetLife Stadium, East Rutherford, USA
+Title:  🇧🇷 Brasil vs Marrocos 🇲🇦 — Grupo C       (before match)
+Title:  🇧🇷 Brasil 2 x 0 Marrocos 🇲🇦 — Grupo C   (with score)
+Local:  MetLife Stadium, East Rutherford, EUA
+Notes:  FIFA World Cup 2026 — Grupo C
+        Jogo #7
+        🕐 18:00 (ET)
+        📺 Globo / CazéTV
+        🔗 https://...
+```
+
+## Architecture
+
+```
+matches.json          ← Static schedule (teams, dates, stadiums, TV, streaming)
+scores.json           ← Dynamic scores only (updated via API or manually)
+generate_calendar.py  → Merges both → generates .ics
 ```
 
 ## Development
@@ -39,10 +52,18 @@ Each event shows:
 pip install -r requirements.txt
 ```
 
-### Update match data
+### Fetch match schedule (from Wikipedia)
 ```bash
-python fetch_matches.py          # Fetch schedule from sources
-python fetch_matches.py --scores # Update scores
+python fetch_matches.py           # All 104 matches
+python fetch_matches.py --groups  # Group stage only
+python fetch_matches.py --knockout # Knockout only
+```
+
+### Update scores
+```bash
+python update_scores.py              # Fetch from API
+python update_scores.py --match 7    # Specific match
+python update_scores.py --manual 7 2 0  # Manual: match 7, home 2, away 0
 ```
 
 ### Generate calendar
@@ -52,11 +73,7 @@ python generate_calendar.py
 
 The `.ics` file is generated in `docs/` — GitHub Pages serves from this folder.
 
-### Update scores
-Edit `matches.json` — set `score_home` and `score_away` for completed matches, then re-run `generate_calendar.py`.
+## Hosting
 
-## Hosting (GitHub Pages)
-
-1. Push this repo to GitHub
-2. Go to Settings → Pages → Source: "Deploy from a branch" → Branch: `main`, folder: `/docs`
-3. Your calendar will be live at `https://<username>.github.io/fifa-worldcup-2026-calendar/fifa-worldcup-2026.ics`
+GitHub Pages serves from `/docs` on branch `main`.
+Live at: https://marceloingarano.github.io/fifa-worldcup-2026-calendar/

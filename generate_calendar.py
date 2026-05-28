@@ -11,6 +11,7 @@ from icalendar import Calendar, Event
 from flags import get_flag, get_name_pt, get_tz_abbr
 
 MATCHES_FILE = Path(__file__).parent / "matches.json"
+SCORES_FILE = Path(__file__).parent / "scores.json"
 OUTPUT_FILE = Path(__file__).parent / "docs" / "fifa-worldcup-2026.ics"
 MATCH_DURATION_MINUTES = 120
 
@@ -86,8 +87,33 @@ def add_match_event(cal: Calendar, match: dict) -> None:
     cal.add_component(event)
 
 
+def load_scores() -> dict:
+    """Load scores from scores.json. Returns dict keyed by match_number (str)."""
+    if not SCORES_FILE.exists():
+        return {}
+    return json.loads(SCORES_FILE.read_text(encoding="utf-8"))
+
+
+def merge_scores(matches: list[dict], scores: dict) -> list[dict]:
+    """Merge score data into match list without modifying matches.json."""
+    merged = []
+    for match in matches:
+        m = dict(match)
+        key = str(m["match_number"])
+        if key in scores:
+            m["score_home"] = scores[key].get("score_home")
+            m["score_away"] = scores[key].get("score_away")
+        else:
+            m["score_home"] = None
+            m["score_away"] = None
+        merged.append(m)
+    return merged
+
+
 def main():
     matches = json.loads(MATCHES_FILE.read_text(encoding="utf-8"))
+    scores = load_scores()
+    matches = merge_scores(matches, scores)
     cal = create_calendar()
 
     for match in sorted(matches, key=lambda m: (m["date"], m["time"])):
@@ -95,7 +121,7 @@ def main():
 
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_FILE.write_bytes(cal.to_ical())
-    print(f"Generated {OUTPUT_FILE} with {len(matches)} matches")
+    print(f"Generated {OUTPUT_FILE} with {len(matches)} matches ({len(scores)} with scores)")
 
 
 if __name__ == "__main__":
