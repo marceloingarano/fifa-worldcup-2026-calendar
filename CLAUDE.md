@@ -1,5 +1,18 @@
 # FIFA World Cup 2026 Calendar — Project Context
 
+## Mandatory: Keep documentation in sync
+
+When modifying this project, you MUST update the relevant documentation files in the same commit:
+
+| File | What to update | When |
+|---|---|---|
+| `CLAUDE.md` | Architecture, file purposes, constraints, format rules, data sources, tech stack | Any structural change (new scripts, new fields, changed logic, new dependencies, new workflows) |
+| `OPERATIONS.md` | Procedures, commands, rollback plans, automation details | Any change to operational flow (new scripts, changed CLI args, new workflows, changed API) |
+| `README.md` | User-facing instructions, subscription steps, development commands | Any change visible to end users or contributors |
+| `docs/index.html` | Installation instructions, format preview, platform steps | Any change to subscription flow, event format, or supported platforms |
+
+Outdated documentation leads to broken code and confused users. If in doubt, update all four.
+
 ## What this project does
 
 Generates and serves an .ics calendar file with all 104 FIFA World Cup 2026 matches. Users subscribe via URL on iPhone, Android, or Outlook and receive auto-updated events with live scores, team names in PT-BR, emoji flags, and broadcasting info.
