@@ -136,20 +136,39 @@ Para forçar atualização imediata:
 
 ## Testes
 
-```bash
-python -m pytest tests/ -v
-```
+Rodam automaticamente antes de cada commit (pre-commit hook) e em cada push (GitHub Actions).
 
-Roda automaticamente antes de cada commit (pre-commit hook) e em cada push (GitHub Actions).
+### Comandos de execução
+
+```bash
+# Todos os testes (unit + E2E)
+python -m pytest tests/ -v
+
+# Só testes unitários (rápido, sem rede)
+python -m pytest tests/ --ignore=tests/test_e2e_consistency.py
+
+# Só E2E (valida .ics contra Wikipedia, requer internet)
+python -m pytest tests/test_e2e_consistency.py -v
+
+# E2E com mais amostras (default: 5 jogos aleatórios)
+E2E_SAMPLE_SIZE=15 python -m pytest tests/test_e2e_consistency.py -v
+```
 
 ### O que os testes garantem
 
+**Unitários (94 testes):**
 - Integridade de matches.json (104 jogos, 6 por grupo, datas válidas, sem duplicatas)
 - Formato correto dos títulos (com/sem placar, bandeiras, nomes PT-BR)
 - Merge scores não corrompe dados
 - Rate limit funciona corretamente
 - Normalização de nomes de times cobre variantes da API
 - Match por data + times funciona em ambas as direções (home/away invertido)
+
+**E2E (8 testes):**
+- Pega jogos aleatórios do .ics e valida contra Wikipedia
+- Compara: datas, horários, estádios, nomes dos times, placares
+- Detecta drift entre nossos dados e a fonte oficial
+- Falha se o .ics tiver placar divergente do Wikipedia
 
 ## Referências
 
