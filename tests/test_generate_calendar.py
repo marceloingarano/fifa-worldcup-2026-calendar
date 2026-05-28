@@ -80,7 +80,7 @@ class TestBuildEventTitle:
     def test_no_score_shows_vs(self, match_no_score):
         title = build_event_title(match_no_score)
         assert "vs" in title
-        assert "Brasil" in title
+        assert "BRASIL" in title
         assert "Marrocos" in title
         assert "Grupo C" in title
         assert "x" not in title
@@ -89,7 +89,7 @@ class TestBuildEventTitle:
         title = build_event_title(match_with_score)
         assert "2 x 0" in title
         assert "vs" not in title
-        assert "Brasil" in title
+        assert "BRASIL" in title
         assert "Marrocos" in title
 
     def test_flags_present(self, match_no_score):

@@ -38,7 +38,7 @@ class TestGetFlag:
 
 class TestGetNamePt:
     def test_known_team_returns_portuguese_name(self):
-        assert get_name_pt("Brazil") == "Brasil"
+        assert get_name_pt("Brazil") == "BRASIL"
         assert get_name_pt("Germany") == "Alemanha"
         assert get_name_pt("United States") == "Estados Unidos"
         assert get_name_pt("Ivory Coast") == "Costa do Marfim"

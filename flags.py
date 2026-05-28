@@ -78,7 +78,7 @@ NAMES_PT_BR = {
     "Australia": "Austrália",
     "Belgium": "Bélgica",
     "Bolivia": "Bolívia",
-    "Brazil": "Brasil",
+    "Brazil": "BRASIL",
     "Cameroon": "Camarões",
     "Canada": "Canadá",
     "Chile": "Chile",
