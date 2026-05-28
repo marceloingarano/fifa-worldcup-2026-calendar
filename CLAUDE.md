@@ -17,7 +17,10 @@ Outdated documentation leads to broken code and confused users. If in doubt, upd
 
 Generates and serves an .ics calendar file with all 104 FIFA World Cup 2026 matches. Users subscribe via URL on iPhone, Android, or Outlook and receive auto-updated events with live scores, team names in PT-BR, emoji flags, and broadcasting info.
 
-**Live URL:** https://marceloingarano.github.io/fifa-worldcup-2026-calendar/fifa-worldcup-2026.ics
+**Live URL (primary):** https://copa2026.trakas.com.br/fifa-worldcup-2026.ics
+**Live URL (fallback):** https://marceloingarano.github.io/fifa-worldcup-2026-calendar/fifa-worldcup-2026.ics
+
+The primary URL is proxied via Cloudflare Worker (analytics). The fallback serves directly from GitHub Pages. Both serve the same .ics file.
 
 ## Architecture
 

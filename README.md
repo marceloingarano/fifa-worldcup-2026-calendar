@@ -5,8 +5,10 @@ All 104 matches on your phone calendar. Free, auto-updated with live scores.
 ## Subscribe
 
 ```
-https://marceloingarano.github.io/fifa-worldcup-2026-calendar/fifa-worldcup-2026.ics
+https://copa2026.trakas.com.br/fifa-worldcup-2026.ics
 ```
+
+> URL alternativa (GitHub Pages direto): `https://marceloingarano.github.io/fifa-worldcup-2026-calendar/fifa-worldcup-2026.ics`
 
 | Platform | How to |
 |---|---|

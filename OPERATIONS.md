@@ -273,6 +273,9 @@ Configurado em Settings → Branches → main:
 | Recurso | URL |
 |---|---|
 | OpenLigaDB API | https://api.openligadb.de |
-| GitHub Pages | https://marceloingarano.github.io/fifa-worldcup-2026-calendar/ |
-| Calendar URL | https://marceloingarano.github.io/fifa-worldcup-2026-calendar/fifa-worldcup-2026.ics |
+| Calendar URL (primary) | https://copa2026.trakas.com.br/fifa-worldcup-2026.ics |
+| Calendar URL (fallback) | https://marceloingarano.github.io/fifa-worldcup-2026-calendar/fifa-worldcup-2026.ics |
+| Landing page | https://copa2026.trakas.com.br/ |
+| GitHub Pages (origin) | https://marceloingarano.github.io/fifa-worldcup-2026-calendar/ |
+| Cloudflare dashboard | https://dash.cloudflare.com/ → Workers → copa2026-calendar → Analytics |
 | Wikipedia schedule | https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_Group_A |
