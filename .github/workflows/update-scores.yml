@@ -2,9 +2,11 @@ name: Update Scores
 
 on:
   schedule:
-    # Every 10 minutes during match hours (15:00-03:00 UTC = 12:00-00:00 BRT)
-    - cron: '*/10 15-23 * 6-7 *'
-    - cron: '*/10 0-3 * 6-7 *'
+    # Every 10 minutes during match hours (15:00-03:00 UTC = 12:00-00:00 BRT).
+    # Offset minutes (3,13,...,53) instead of */10 to avoid GitHub's on-the-hour
+    # scheduler congestion, which delays/drops runs at :00,:10,... See OPERATIONS.md.
+    - cron: '3,13,23,33,43,53 15-23 * 6-7 *'
+    - cron: '3,13,23,33,43,53 0-3 * 6-7 *'
   workflow_dispatch: # Manual trigger (skips date check for testing)
 
 jobs:
