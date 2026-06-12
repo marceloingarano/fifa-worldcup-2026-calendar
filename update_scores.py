@@ -127,14 +127,25 @@ def find_match_number(matches: list[dict], home: str, away: str, match_date: str
 
 
 def extract_final_score(api_match: dict) -> tuple[int | None, int | None]:
-    """Extract final score from matchResults. Returns (home_goals, away_goals)."""
-    for result in api_match.get("matchResults", []):
-        if result.get("resultOrderID") == 1:  # Endergebnis = final result
+    """Extract final score from matchResults. Returns (home_goals, away_goals).
+
+    OpenLigaDB returns multiple results per match. The final score is the one
+    named "Endergebnis" (resultTypeID == 2). resultOrderID == 1 is the FIRST
+    chronological result, which becomes "Halbzeit" (half-time) once the match
+    passes the first half — NOT the final score.
+    """
+    results = api_match.get("matchResults", [])
+
+    # Preferred: the official final result.
+    for result in results:
+        if result.get("resultName") == "Endergebnis" or result.get("resultTypeID") == 2:
             return result["pointsTeam1"], result["pointsTeam2"]
-    # Fallback: check if there's any result
-    if api_match.get("matchResults"):
-        last = api_match["matchResults"][0]
-        return last["pointsTeam1"], last["pointsTeam2"]
+
+    # Fallback: highest resultOrderID = most recent live result (e.g. half-time
+    # while a match is still LIVE and no final result exists yet).
+    if results:
+        latest = max(results, key=lambda r: r.get("resultOrderID", 0))
+        return latest["pointsTeam1"], latest["pointsTeam2"]
     return None, None
 
 

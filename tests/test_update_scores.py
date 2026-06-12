@@ -40,11 +40,14 @@ def api_match_finished():
         "matchDateTimeUTC": "2026-06-13T22:00:00Z",
         "team1": {"teamName": "Brasilien", "shortName": "BRA"},
         "team2": {"teamName": "Marokko", "shortName": "MAR"},
+        # Mirror real OpenLigaDB ordering: Halbzeit (half-time) is the FIRST
+        # chronological result (resultOrderID 1), Endergebnis (final) comes
+        # after. extract_final_score() must pick Endergebnis, not orderID 1.
         "matchResults": [
-            {"resultOrderID": 1, "resultName": "Endergebnis",
-             "pointsTeam1": 2, "pointsTeam2": 0},
-            {"resultOrderID": 5, "resultName": "Halbzeit",
+            {"resultOrderID": 1, "resultName": "Halbzeit", "resultTypeID": 1,
              "pointsTeam1": 1, "pointsTeam2": 0},
+            {"resultOrderID": 2, "resultName": "Endergebnis", "resultTypeID": 2,
+             "pointsTeam1": 2, "pointsTeam2": 0},
         ],
         "goals": [],
     }
@@ -58,7 +61,7 @@ def api_match_live():
         "team1": {"teamName": "Brasilien", "shortName": "BRA"},
         "team2": {"teamName": "Marokko", "shortName": "MAR"},
         "matchResults": [
-            {"resultOrderID": 5, "resultName": "Halbzeit",
+            {"resultOrderID": 1, "resultName": "Halbzeit", "resultTypeID": 1,
              "pointsTeam1": 1, "pointsTeam2": 0},
         ],
         "goals": [],
