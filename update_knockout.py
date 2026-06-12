@@ -40,8 +40,11 @@ WIKIPEDIA_KNOCKOUT_URL = "https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_knoc
 HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
 
 KNOCKOUT_MATCHDAYS = {
-    4: "Oitavas de Final",
-    5: "16 Avos de Final",
+    # 48-team format: matchday 4 = Round of 32 (16 avos), matchday 5 =
+    # Round of 16 (oitavas). Mirrors update_scores.py MATCHDAYS
+    # (Sechzehntelfinale=4, Achtelfinale=5). Do not swap these.
+    4: "16 Avos de Final",
+    5: "Oitavas de Final",
     6: "Quartas de Final",
     7: "Semifinal",
     8: "Final",

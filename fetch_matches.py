@@ -206,13 +206,15 @@ def classify_knockout_stage(date_str: str) -> str:
         return "Mata-mata"
     day = int(date_str[8:10])
     month = int(date_str[5:7])
+    # 48-team format: Round of 32 (16 avos, 28/06–03/07) comes BEFORE
+    # Round of 16 (oitavas, 04/07–07/07). Do not swap these.
     if month == 6:
-        return "Oitavas de Final"
+        return "16 Avos de Final"
     if month == 7:
         if day <= 3:
-            return "Oitavas de Final"
-        if day <= 7:
             return "16 Avos de Final"
+        if day <= 7:
+            return "Oitavas de Final"
         if day <= 11:
             return "Quartas de Final"
         if day <= 15:

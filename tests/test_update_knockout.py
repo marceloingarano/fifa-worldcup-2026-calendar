@@ -21,11 +21,11 @@ def matches_with_placeholders():
         {"match_number": 1, "stage": "Grupo C", "home": "Brazil", "away": "Morocco",
          "date": "2026-06-13", "time": "18:00", "timezone": "America/New_York",
          "stadium": "MetLife Stadium", "city": "East Rutherford, EUA", "tv": "CazéTV", "streaming": ""},
-        {"match_number": 73, "stage": "Oitavas de Final", "home": "Winner Group C",
+        {"match_number": 73, "stage": "16 Avos de Final", "home": "Winner Group C",
          "away": "Runner-up Group F", "date": "2026-06-29", "time": "12:00",
          "timezone": "America/New_York", "stadium": "NRG Stadium", "city": "Houston, EUA",
          "tv": "CazéTV", "streaming": ""},
-        {"match_number": 74, "stage": "Oitavas de Final", "home": "Winner Group D",
+        {"match_number": 74, "stage": "16 Avos de Final", "home": "Winner Group D",
          "away": "Runner-up Group E", "date": "2026-06-29", "time": "16:00",
          "timezone": "America/New_York", "stadium": "MetLife Stadium", "city": "East Rutherford, EUA",
          "tv": "CazéTV", "streaming": ""},
@@ -39,7 +39,7 @@ def matches_with_placeholders():
 @pytest.fixture
 def matches_all_resolved():
     return [
-        {"match_number": 73, "stage": "Oitavas de Final", "home": "Brazil",
+        {"match_number": 73, "stage": "16 Avos de Final", "home": "Brazil",
          "away": "Sweden", "date": "2026-06-29", "time": "12:00",
          "timezone": "America/New_York", "stadium": "NRG Stadium", "city": "Houston, EUA",
          "tv": "CazéTV", "streaming": ""},
@@ -119,11 +119,11 @@ class TestSafetyGuardrails:
     def test_two_matches_same_day_resolved_by_time(self):
         """With multiple knockout matches on same day, matching uses time to differentiate."""
         matches = [
-            {"match_number": 73, "stage": "Oitavas de Final", "home": "Winner Group C",
+            {"match_number": 73, "stage": "16 Avos de Final", "home": "Winner Group C",
              "away": "Runner-up Group F", "date": "2026-06-29", "time": "12:00",
              "timezone": "America/New_York", "stadium": "NRG Stadium", "city": "Houston, EUA",
              "tv": "", "streaming": ""},
-            {"match_number": 74, "stage": "Oitavas de Final", "home": "Winner Group D",
+            {"match_number": 74, "stage": "16 Avos de Final", "home": "Winner Group D",
              "away": "Runner-up Group E", "date": "2026-06-29", "time": "16:00",
              "timezone": "America/New_York", "stadium": "MetLife Stadium", "city": "East Rutherford, EUA",
              "tv": "", "streaming": ""},
@@ -159,11 +159,11 @@ class TestSafetyGuardrails:
     def test_find_knockout_match_by_utc(self):
         """OpenLigaDB UTC time resolves to correct local match."""
         matches = [
-            {"match_number": 73, "stage": "Oitavas de Final", "home": "Winner Group C",
+            {"match_number": 73, "stage": "16 Avos de Final", "home": "Winner Group C",
              "away": "Runner-up Group F", "date": "2026-06-29", "time": "12:00",
              "timezone": "America/Chicago", "stadium": "NRG Stadium", "city": "Houston, EUA",
              "tv": "", "streaming": ""},
-            {"match_number": 74, "stage": "Oitavas de Final", "home": "Winner Group D",
+            {"match_number": 74, "stage": "16 Avos de Final", "home": "Winner Group D",
              "away": "Runner-up Group E", "date": "2026-06-29", "time": "16:00",
              "timezone": "America/New_York", "stadium": "MetLife Stadium", "city": "East Rutherford, EUA",
              "tv": "", "streaming": ""},

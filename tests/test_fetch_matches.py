@@ -56,13 +56,15 @@ class TestNormalizeStadium:
 
 class TestClassifyKnockoutStage:
     def test_round_of_32(self):
-        assert classify_knockout_stage("2026-06-28") == "Oitavas de Final"
-        assert classify_knockout_stage("2026-06-30") == "Oitavas de Final"
-        assert classify_knockout_stage("2026-07-03") == "Oitavas de Final"
+        # Round of 32 = "16 Avos de Final" (16 matches, 28/06–03/07), first KO round
+        assert classify_knockout_stage("2026-06-28") == "16 Avos de Final"
+        assert classify_knockout_stage("2026-06-30") == "16 Avos de Final"
+        assert classify_knockout_stage("2026-07-03") == "16 Avos de Final"
 
     def test_round_of_16(self):
-        assert classify_knockout_stage("2026-07-04") == "16 Avos de Final"
-        assert classify_knockout_stage("2026-07-07") == "16 Avos de Final"
+        # Round of 16 = "Oitavas de Final" (8 matches, 04/07–07/07), after Round of 32
+        assert classify_knockout_stage("2026-07-04") == "Oitavas de Final"
+        assert classify_knockout_stage("2026-07-07") == "Oitavas de Final"
 
     def test_quarterfinals(self):
         assert classify_knockout_stage("2026-07-09") == "Quartas de Final"
