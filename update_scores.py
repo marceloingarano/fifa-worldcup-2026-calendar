@@ -1,94 +1,31 @@
 #!/usr/bin/env python3
-"""
-Update scores.json from OpenLigaDB (free, no auth, no rate limit).
+"""Update scores.json from live score sources.
 
-API: https://api.openligadb.de
-League: wm26 (FIFA World Cup 2026)
+Sources (see score_sources/):
+    ESPN        — primary, real-time live scores
+    OpenLigaDB  — fallback + final-result consolidation
+
+This module is orchestration + CLI only. All API logic lives in the per-source
+modules; matching lives in score_sources.matching. Every source emits the same
+normalized ScoreRecord, so the logic here is source-agnostic.
 
 Modes:
-    python update_scores.py --live         # Fetch all matches (live + finished)
-    python update_scores.py --final        # Fetch only finished matches
-    python update_scores.py --manual 7 2 0 # Manually set: match 7, home 2, away 0
-    python update_scores.py --status       # Show current scores summary
+    python update_scores.py --live          # ESPN, fallback to OpenLigaDB
+    python update_scores.py --final         # OpenLigaDB final consolidation
+    python update_scores.py --manual 7 2 0  # Manually set: match 7, home 2, away 0
+    python update_scores.py --status        # Show current scores summary
 """
 
 import argparse
 import json
-import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
-import requests
+from score_sources import ScoreRecord, espn, openligadb
+from score_sources.matching import resolve_match_number
 
 SCORES_FILE = Path(__file__).parent / "scores.json"
 MATCHES_FILE = Path(__file__).parent / "matches.json"
-
-API_BASE_URL = "https://api.openligadb.de"
-LEAGUE_SHORTCUT = "wm26"
-SEASON = 2026
-
-MATCHDAYS = {
-    1: "Gruppenphase 1",
-    2: "Gruppenphase 2",
-    3: "Gruppenphase 3",
-    4: "Sechzehntelfinale",  # Round of 32
-    5: "Achtelfinale",       # Round of 16
-    6: "Viertelfinale",      # Quarter-finals
-    7: "Halbfinale",         # Semi-finals
-    8: "Finale",             # Final + Third place
-}
-
-# Mapping from OpenLigaDB short codes to our team names in matches.json
-TEAM_SHORT_TO_NAME = {
-    "MEX": "Mexico",
-    "RSA": "South Africa",
-    "KOR": "South Korea",
-    "CZE": "Czech Republic",
-    "CAN": "Canada",
-    "BIH": "Bosnia and Herzegovina",
-    "QAT": "Qatar",
-    "CHE": "Switzerland",
-    "BRA": "Brazil",
-    "MAR": "Morocco",
-    "HTI": "Haiti",
-    "SCT": "Scotland",
-    "USA": "United States",
-    "PAR": "Paraguay",
-    "AUS": "Australia",
-    "TUR": "Turkey",
-    "DEU": "Germany",
-    "CUW": "Curaçao",
-    "CIV": "Ivory Coast",
-    "ECU": "Ecuador",
-    "NLD": "Netherlands",
-    "JPN": "Japan",
-    "SWE": "Sweden",
-    "TUN": "Tunisia",
-    "BEL": "Belgium",
-    "EGY": "Egypt",
-    "IRN": "Iran",
-    "NZL": "New Zealand",
-    "ESP": "Spain",
-    "CPV": "Cape Verde",
-    "SAU": "Saudi Arabia",
-    "URY": "Uruguay",
-    "FRA": "France",
-    "SEN": "Senegal",
-    "IRQ": "Iraq",
-    "NOR": "Norway",
-    "ARG": "Argentina",
-    "DZA": "Algeria",
-    "AUT": "Austria",
-    "JOR": "Jordan",
-    "PRT": "Portugal",
-    "COD": "DR Congo",
-    "UZB": "Uzbekistan",
-    "COL": "Colombia",
-    "ENG": "England",
-    "HRV": "Croatia",
-    "GHA": "Ghana",
-    "PAN": "Panama",
-}
 
 
 def load_scores() -> dict:
@@ -108,139 +45,65 @@ def load_matches() -> list[dict]:
     return json.loads(MATCHES_FILE.read_text(encoding="utf-8"))
 
 
-def resolve_team_name(api_match: dict, team_key: str) -> str:
-    """Resolve team name from API short code to our matches.json name."""
-    team = api_match[team_key]
-    short = team.get("shortName", "")
-    return TEAM_SHORT_TO_NAME.get(short, team.get("teamName", ""))
+def apply_records(records: list[ScoreRecord], matches: list[dict], scores: dict) -> int:
+    """Merge ScoreRecords into the scores dict. Returns count of changed entries.
 
-
-def find_match_number(matches: list[dict], home: str, away: str, match_date: str) -> int | None:
-    """Find our match_number by date + team names."""
-    for m in matches:
-        if m["date"] != match_date:
-            continue
-        if (m["home"] == home and m["away"] == away) or \
-           (m["home"] == away and m["away"] == home):
-            return m["match_number"]
-    return None
-
-
-def extract_final_score(api_match: dict) -> tuple[int | None, int | None]:
-    """Extract final score from matchResults. Returns (home_goals, away_goals).
-
-    OpenLigaDB returns multiple results per match. The final score is the one
-    named "Endergebnis" (resultTypeID == 2). resultOrderID == 1 is the FIRST
-    chronological result, which becomes "Halbzeit" (half-time) once the match
-    passes the first half — NOT the final score.
+    Idempotent: only writes when the score or status actually changed.
     """
-    results = api_match.get("matchResults", [])
-
-    # Preferred: the official final result.
-    for result in results:
-        if result.get("resultName") == "Endergebnis" or result.get("resultTypeID") == 2:
-            return result["pointsTeam1"], result["pointsTeam2"]
-
-    # Fallback: highest resultOrderID = most recent live result (e.g. half-time
-    # while a match is still LIVE and no final result exists yet).
-    if results:
-        latest = max(results, key=lambda r: r.get("resultOrderID", 0))
-        return latest["pointsTeam1"], latest["pointsTeam2"]
-    return None, None
-
-
-def determine_status(api_match: dict) -> str:
-    """Determine match status from API data."""
-    if api_match.get("matchIsFinished"):
-        return "FT"
-    if api_match.get("matchResults"):
-        return "LIVE"
-    return "NS"
-
-
-def fetch_all_matches() -> list[dict]:
-    """Fetch all WC 2026 matches from OpenLigaDB."""
-    all_data = []
-    for matchday in range(1, 9):
-        url = f"{API_BASE_URL}/getmatchdata/{LEAGUE_SHORTCUT}/{SEASON}/{matchday}"
-        try:
-            resp = requests.get(url, timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
-            all_data.extend(data)
-            print(f"  Matchday {matchday} ({MATCHDAYS.get(matchday, '?')}): {len(data)} matches")
-        except requests.RequestException as e:
-            print(f"  Matchday {matchday}: ERROR - {e}")
-    return all_data
-
-
-def process_api_data(api_data: list[dict], matches: list[dict], scores: dict,
-                     only_finished: bool = False) -> int:
-    """Process API response and update scores dict. Returns count of updates."""
     updated = 0
-
-    for api_match in api_data:
-        status = determine_status(api_match)
-
-        if only_finished and status != "FT":
-            continue
-
-        if status == "NS":
-            continue
-
-        score_home, score_away = extract_final_score(api_match)
-        if score_home is None:
-            continue
-
-        home_name = resolve_team_name(api_match, "team1")
-        away_name = resolve_team_name(api_match, "team2")
-        match_date = api_match.get("matchDateTimeUTC", "")[:10]
-
-        match_num = find_match_number(matches, home_name, away_name, match_date)
+    for record in records:
+        match_num = resolve_match_number(matches, record.home, record.away, record.utc)
         if match_num is None:
-            print(f"  WARN: Could not match {home_name} vs {away_name} on {match_date}")
+            print(f"  WARN: could not match {record.home} vs {record.away} @ {record.utc.isoformat()}")
             continue
 
         key = str(match_num)
         new_score = {
-            "score_home": score_home,
-            "score_away": score_away,
-            "status": status,
+            "score_home": record.score_home,
+            "score_away": record.score_away,
+            "status": record.status,
         }
 
         existing = scores.get(key, {})
-        if existing.get("score_home") != score_home or \
-           existing.get("score_away") != score_away or \
-           existing.get("status") != status:
+        if existing.get("score_home") != record.score_home or \
+           existing.get("score_away") != record.score_away or \
+           existing.get("status") != record.status:
             scores[key] = new_score
             updated += 1
-            label = "FINAL" if status == "FT" else "LIVE"
-            print(f"  [{label}] #{match_num}: {home_name} {score_home} - {score_away} {away_name}")
+            label = "FINAL" if record.status == "FT" else "LIVE"
+            print(f"  [{label}] #{match_num}: {record.home} {record.score_home} - {record.score_away} {record.away}")
 
     return updated
 
 
 def cmd_live():
-    """Fetch all matches with scores (live + finished)."""
-    print("Fetching all matches from OpenLigaDB...")
+    """Fetch live + finished scores: ESPN first, OpenLigaDB as fallback."""
     matches = load_matches()
     scores = load_scores()
 
-    api_data = fetch_all_matches()
-    updated = process_api_data(api_data, matches, scores, only_finished=False)
+    today = datetime.now(timezone.utc).date()
+    print("Fetching live scores from ESPN...")
+    records = espn.fetch(today)
+    source = "ESPN"
 
+    if not records:
+        print("ESPN returned nothing — falling back to OpenLigaDB...")
+        records = openligadb.fetch()
+        source = "OpenLigaDB"
+
+    updated = apply_records(records, matches, scores)
     save_scores(scores)
-    print(f"\nUpdated {updated} scores. Total in file: {len(scores)}")
+    print(f"\nSource: {source}. Updated {updated} scores. Total in file: {len(scores)}")
 
 
 def cmd_final():
-    """Fetch only finished matches (end-of-day consolidation)."""
-    print("Final consolidation — fetching finished matches...")
+    """Final consolidation — OpenLigaDB finished results only."""
+    print("Final consolidation — fetching from OpenLigaDB...")
     matches = load_matches()
     scores = load_scores()
 
-    api_data = fetch_all_matches()
-    updated = process_api_data(api_data, matches, scores, only_finished=True)
+    records = [r for r in openligadb.fetch() if r.status == "FT"]
+    updated = apply_records(records, matches, scores)
 
     save_scores(scores)
     print(f"\nUpdated {updated} scores. Total in file: {len(scores)}")
@@ -252,8 +115,7 @@ def cmd_status():
     finished = sum(1 for s in scores.values() if s.get("status") == "FT")
     live = sum(1 for s in scores.values() if s.get("status") == "LIVE")
     print(f"Scores: {len(scores)} total ({finished} finished, {live} live)")
-    print(f"API: OpenLigaDB (free, no auth, no rate limit)")
-    print(f"League: {LEAGUE_SHORTCUT} / Season: {SEASON}")
+    print("Sources: ESPN (primary, live) + OpenLigaDB (fallback, final)")
 
 
 def cmd_manual(match_num: str, home_score: str, away_score: str):
@@ -269,10 +131,10 @@ def cmd_manual(match_num: str, home_score: str, away_score: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Update scores from OpenLigaDB")
+    parser = argparse.ArgumentParser(description="Update scores from live sources")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--live", action="store_true", help="Fetch live + finished scores")
-    group.add_argument("--final", action="store_true", help="Final consolidation (finished only)")
+    group.add_argument("--live", action="store_true", help="Fetch live + finished (ESPN, fallback OpenLigaDB)")
+    group.add_argument("--final", action="store_true", help="Final consolidation (OpenLigaDB, finished only)")
     group.add_argument("--manual", nargs=3, metavar=("MATCH", "HOME", "AWAY"),
                        help="Manually set score: match_number home_score away_score")
     group.add_argument("--status", action="store_true", help="Show scores summary")

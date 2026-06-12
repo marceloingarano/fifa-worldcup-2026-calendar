@@ -6,7 +6,7 @@ Guia de procedimentos para manter o calendário atualizado durante a Copa do Mun
 
 1. Python 3.12+ instalado
 2. Dependências: `pip install -r requirements.txt`
-3. API de scores: OpenLigaDB (gratuita, sem autenticação, sem rate limit)
+3. APIs de scores (ambas gratuitas, sem autenticação): ESPN (primária, ao vivo) e OpenLigaDB (fallback, consolidação)
 
 ## Arquitetura de dados
 
@@ -16,12 +16,30 @@ matches.json          ← Estático: schedule, estádios, TV, streaming
                          Quando atualizar: só se FIFA mudar horários/estádios
 
 scores.json           ← Dinâmico: apenas resultados dos jogos
-                         Fonte: update_scores.py (OpenLigaDB)
+                         Fonte: update_scores.py (ESPN + OpenLigaDB)
                          Quando atualizar: durante e após os jogos
 
 generate_calendar.py  → Merge(matches + scores) → docs/fifa-worldcup-2026.ics
                          Rodar após qualquer atualização de scores
 ```
+
+### Fontes de score (pacote `score_sources/`)
+
+O `update_scores.py` é só orquestração + CLI; toda a lógica de API vive em módulos isolados:
+
+```
+score_sources/
+├── __init__.py     ← ScoreRecord (shape normalizado comum a todas as fontes)
+├── espn.py         ← FONTE PRIMÁRIA: placar ao vivo em tempo real
+├── openligadb.py   ← FALLBACK + consolidação de resultados finais
+└── matching.py     ← casa ScoreRecord → match_number por times + instante UTC
+```
+
+**Por que ESPN é primária:** na abertura, a OpenLigaDB ficou horas sem reportar placar ao vivo (`results: 0`) enquanto a ESPN já mostrava o jogo em tempo real com minuto. ESPN é uma API não-documentada (pode mudar sem aviso) — por isso a OpenLigaDB permanece como fallback automático: se a ESPN não retornar nada, o `--live` cai para a OpenLigaDB.
+
+**Janela ESPN:** o scoreboard só retorna o dia atual; o `espn.fetch()` busca **hoje + ontem (UTC)** para capturar jogos noturnos das Américas que "viram" para o dia UTC seguinte e ainda estão ao vivo.
+
+**Matching robusto (corrige bug de data):** matches.json guarda data/hora **locais** do estádio; as APIs reportam **UTC**. 36 dos 104 jogos caem num dia UTC diferente do dia local (jogos noturnos nas Américas). O matcher antigo comparava strings de data e falhava para esses 36. O `score_sources/matching.py` converte cada jogo para o **instante UTC** real e casa por times + instante, então a virada de dia não importa.
 
 ## Procedimentos diários (dias com jogos)
 
@@ -39,7 +57,7 @@ git add scores.json docs/fifa-worldcup-2026.ics && git commit -m "Live scores up
 
 **Janela de jogos típica:** primeiro kick-off até último jogo + 30min de margem (prorrogação/penalidades).
 
-**O que faz:** busca todos os jogos na OpenLigaDB e atualiza scores.json com jogos em andamento e finalizados.
+**O que faz:** busca placar ao vivo na ESPN (fallback OpenLigaDB) e atualiza scores.json com jogos em andamento e finalizados.
 
 ### 2. Após os jogos — Consolidação final
 
@@ -51,7 +69,7 @@ git add scores.json docs/fifa-worldcup-2026.ics && git commit -m "Final scores c
 
 **Frequência:** uma vez por dia, após todos os jogos do dia terminarem.
 
-**O que faz:** busca todos os jogos finalizados (FT, AET, PEN) e garante que o scores.json está completo e correto.
+**O que faz:** busca os jogos finalizados na OpenLigaDB (boa para resultado final) e garante que o scores.json está completo e correto.
 
 ### 3. Verificação de status
 
