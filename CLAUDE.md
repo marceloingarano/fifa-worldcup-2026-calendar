@@ -26,13 +26,35 @@ The primary URL is proxied via Cloudflare Worker (analytics). The fallback serve
 
 ```
 matches.json           → Static: schedule, stadiums, TV, streaming (source: Wikipedia)
-scores.json            → Dynamic: match results only (source: OpenLigaDB API)
-generate_calendar.py   → Merges both → sanitize_event() → docs/fifa-worldcup-2026.ics
+scores.json            → Dynamic: match results only (source: ESPN + OpenLigaDB)
+score_sources/         → Per-source API logic, normalized to ScoreRecord
+generate_calendar.py   → Merges matches + scores → sanitize_event() → docs/fifa-worldcup-2026.ics
 security/validator.py  → Post-generation scan (CI gate)
 ```
 
 Separation prevents score updates from corrupting schedule data and vice-versa.
 Sanitizer filters every event before .ics generation. Validator scans the output before publishing.
+
+### Score sources (`score_sources/` package)
+
+`update_scores.py` is orchestration + CLI only. Each source talks to its own API
+and returns a normalized `ScoreRecord` (canonical team names + UTC kickoff instant),
+so the pipeline is source-agnostic.
+
+| Module | Role |
+|---|---|
+| `score_sources/__init__.py` | `ScoreRecord` dataclass (the common shape) |
+| `score_sources/espn.py` | **Primary** live source (real-time). Fetches today + yesterday UTC. `ESPN_NAME_TO_CANONICAL` normalizes 4 divergent names (Czechia, etc.) |
+| `score_sources/openligadb.py` | **Fallback** + final-result consolidation. Holds `TEAM_SHORT_TO_NAME` |
+| `score_sources/matching.py` | Resolves a `ScoreRecord` to its `match_number` by team pair + UTC instant |
+
+`--live` tries ESPN first and falls back to OpenLigaDB if ESPN returns nothing.
+`--final` uses OpenLigaDB (reliable for finished results).
+
+**UTC-vs-local matching:** matches.json stores LOCAL stadium date/time; APIs report UTC.
+36 of 104 matches fall on a different UTC day than their local date (evening kickoffs in
+the Americas). `matching.py` converts each match to its true UTC instant and matches on
+that, fixing a latent bug where the old date-string comparison missed all 36.
 
 ## Key files
 
@@ -43,7 +65,8 @@ Sanitizer filters every event before .ics generation. Validator scans the output
 | `flags.py` | FLAGS (emoji), NAMES_PT_BR (translations), TIMEZONE_ABBR. All team lookups go through here. |
 | `generate_calendar.py` | Merges matches + scores → builds .ics with icalendar library. Event format defined here. |
 | `fetch_matches.py` | Scrapes Wikipedia (lxml parser, `div.footballbox` class) to populate matches.json. |
-| `update_scores.py` | Fetches live/final scores from OpenLigaDB (free, no auth). |
+| `update_scores.py` | Orchestration + CLI: pulls `ScoreRecord`s from `score_sources/`, matches them, writes scores.json. No API logic. |
+| `score_sources/` | Per-source API modules (espn, openligadb) + shared matcher. See "Score sources" above. |
 | `update_knockout.py` | Resolves placeholder teams ("Winner Group C" → "Brazil") via OpenLigaDB + Wikipedia fallback. Matches by date + time. |
 | `security/sanitizer.py` | Input sanitization: URL allowlist, CRLF removal, forbidden properties, field limits. |
 | `security/validator.py` | Post-generation .ics scanner. Runs standalone or in CI. |
@@ -78,7 +101,8 @@ Rules:
 | Source | What | Auth | Rate limit |
 |---|---|---|---|
 | Wikipedia (group pages + knockout page) | Schedule, teams, dates, stadiums | None | None |
-| OpenLigaDB (`api.openligadb.de`) | Live scores + knockout team resolution | None | None |
+| ESPN (`site.api.espn.com/.../fifa.world/scoreboard`) | **Primary** live scores (real-time) | None | Undocumented API — may change without notice |
+| OpenLigaDB (`api.openligadb.de`) | **Fallback** scores + knockout team resolution | None | None |
 | CazéTV | Broadcasting (hardcoded, all 104 matches) | — | — |
 
 ## Automation (GitHub Actions)
@@ -96,7 +120,7 @@ Requires repo Settings → Actions → Workflow permissions → "Read and write 
 ## Testing
 
 ```bash
-python -m pytest tests/ -v         # All 152 tests
+python -m pytest tests/ -v         # All 170 tests
 python -m pytest tests/ --ignore=tests/test_e2e_consistency.py  # Unit + security (no network)
 python -m pytest tests/test_e2e_consistency.py -v               # E2E vs Wikipedia
 python -m pytest tests/test_security.py -v                      # Security tests only
@@ -119,7 +143,7 @@ Tests enforce:
 - `matches.json` NEVER contains score fields — those live in `scores.json`
 - `update_knockout.py` only modifies teams that are placeholders (`is_placeholder()`) — never overwrites real team names
 - Knockout matching uses date + local time to differentiate multiple matches on same day
-- Pre-commit hook runs all 152 tests before allowing commits
+- Pre-commit hook runs all 170 tests before allowing commits
 - Calendar refresh interval is 6 hours (PT6H in .ics)
 - All URLs in the .ics must be HTTPS and from `security/allowed_domains.json`
 - Branch protection requires PR + passing status checks for merge to main
@@ -136,7 +160,7 @@ Tests enforce:
 ## Rollback procedures
 
 **Corrupted matches.json:** `python fetch_matches.py` (re-scrapes Wikipedia, restores placeholders)
-**Corrupted scores.json:** `echo '{}' > scores.json` (scores rebuild on next API call)
+**Corrupted scores.json:** `echo '{}' > scores.json` (scores rebuild on next `update_scores.py --live` call)
 **Bad knockout update:** `git checkout HEAD~1 -- matches.json`
 
 ## Security

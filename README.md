@@ -35,7 +35,7 @@ Notes:    🕐 18:00 (ET) | 📺 CazéTV | 🔗 youtube.com/@CasimiroMiguel
 
 ```
 matches.json       ← Schedule (Wikipedia scrape)
-scores.json        ← Live scores (OpenLigaDB API, free, no auth)
+scores.json        ← Live scores (ESPN API primary, OpenLigaDB fallback — both free, no auth)
 generate_calendar  → Merges both → .ics served via GitHub Pages
 ```
 
@@ -55,7 +55,7 @@ python update_knockout.py          # Resolve knockout placeholders
 python generate_calendar.py        # Regenerate .ics
 python -m security.validator       # Validate .ics security
 
-python -m pytest tests/ -v         # Run 152 tests
+python -m pytest tests/ -v         # Run 170 tests
 ```
 
 See [OPERATIONS.md](OPERATIONS.md) for full procedures, rollback plans, security details, and automation.

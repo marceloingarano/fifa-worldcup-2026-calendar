@@ -1,20 +1,19 @@
-"""Tests for update_scores.py — OpenLigaDB integration, matching, and score processing."""
+"""Tests for update_scores.py — orchestration: apply_records, fallback, I/O.
+
+Per-source parsing lives in test_source_espn.py / test_source_openligadb.py;
+matching lives in test_score_matching.py. This file covers only the
+source-agnostic glue.
+"""
 
 import json
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import pytest
 
-from update_scores import (
-    load_scores,
-    save_scores,
-    resolve_team_name,
-    find_match_number,
-    extract_final_score,
-    determine_status,
-    process_api_data,
-    TEAM_SHORT_TO_NAME,
-)
+import update_scores
+from score_sources import ScoreRecord, espn, openligadb
+from update_scores import apply_records, load_scores, save_scores
 
 
 @pytest.fixture
@@ -27,68 +26,27 @@ def temp_scores(tmp_path, monkeypatch):
 @pytest.fixture
 def sample_matches():
     return [
-        {"match_number": 7, "home": "Brazil", "away": "Morocco", "date": "2026-06-13"},
-        {"match_number": 8, "home": "Haiti", "away": "Scotland", "date": "2026-06-13"},
-        {"match_number": 1, "home": "Mexico", "away": "South Africa", "date": "2026-06-11"},
+        {"match_number": 2, "home": "South Korea", "away": "Czech Republic",
+         "date": "2026-06-11", "time": "20:00", "timezone": "America/Mexico_City"},
+        {"match_number": 7, "home": "Brazil", "away": "Morocco",
+         "date": "2026-06-13", "time": "18:00", "timezone": "America/New_York"},
     ]
 
 
-@pytest.fixture
-def api_match_finished():
-    return {
-        "matchIsFinished": True,
-        "matchDateTimeUTC": "2026-06-13T22:00:00Z",
-        "team1": {"teamName": "Brasilien", "shortName": "BRA"},
-        "team2": {"teamName": "Marokko", "shortName": "MAR"},
-        # Mirror real OpenLigaDB ordering: Halbzeit (half-time) is the FIRST
-        # chronological result (resultOrderID 1), Endergebnis (final) comes
-        # after. extract_final_score() must pick Endergebnis, not orderID 1.
-        "matchResults": [
-            {"resultOrderID": 1, "resultName": "Halbzeit", "resultTypeID": 1,
-             "pointsTeam1": 1, "pointsTeam2": 0},
-            {"resultOrderID": 2, "resultName": "Endergebnis", "resultTypeID": 2,
-             "pointsTeam1": 2, "pointsTeam2": 0},
-        ],
-        "goals": [],
-    }
+def _record(home, away, utc, sh, sa, status):
+    return ScoreRecord(home=home, away=away, utc=utc, score_home=sh, score_away=sa, status=status)
 
 
-@pytest.fixture
-def api_match_live():
-    return {
-        "matchIsFinished": False,
-        "matchDateTimeUTC": "2026-06-13T22:00:00Z",
-        "team1": {"teamName": "Brasilien", "shortName": "BRA"},
-        "team2": {"teamName": "Marokko", "shortName": "MAR"},
-        "matchResults": [
-            {"resultOrderID": 1, "resultName": "Halbzeit", "resultTypeID": 1,
-             "pointsTeam1": 1, "pointsTeam2": 0},
-        ],
-        "goals": [],
-    }
-
-
-@pytest.fixture
-def api_match_not_started():
-    return {
-        "matchIsFinished": False,
-        "matchDateTimeUTC": "2026-06-13T22:00:00Z",
-        "team1": {"teamName": "Brasilien", "shortName": "BRA"},
-        "team2": {"teamName": "Marokko", "shortName": "MAR"},
-        "matchResults": [],
-        "goals": [],
-    }
+# Brazil vs Morocco kicks off 2026-06-13 18:00 ET = 22:00 UTC.
+BRA_UTC = datetime(2026, 6, 13, 22, 0, tzinfo=timezone.utc)
+# Korea vs Czech kicks off 2026-06-11 20:00 Mexico City = 2026-06-12 02:00 UTC.
+KOR_UTC = datetime(2026, 6, 12, 2, 0, tzinfo=timezone.utc)
 
 
 class TestLoadSaveScores:
     def test_load_empty_file(self, temp_scores):
         temp_scores.write_text("{}")
         assert load_scores() == {}
-
-    def test_load_with_data(self, temp_scores):
-        data = {"7": {"score_home": 2, "score_away": 0, "status": "FT"}}
-        temp_scores.write_text(json.dumps(data))
-        assert load_scores()["7"]["score_home"] == 2
 
     def test_load_nonexistent_returns_empty(self, temp_scores):
         assert load_scores() == {}
@@ -99,116 +57,64 @@ class TestLoadSaveScores:
         assert json.loads(temp_scores.read_text())["1"]["score_home"] == 1
 
 
-class TestResolveTeamName:
-    def test_known_short_codes(self):
-        match = {"team1": {"teamName": "Brasilien", "shortName": "BRA"}}
-        assert resolve_team_name(match, "team1") == "Brazil"
-
-    def test_all_48_teams_mapped(self):
-        expected_teams = {
-            "Mexico", "South Africa", "South Korea", "Czech Republic",
-            "Canada", "Bosnia and Herzegovina", "Qatar", "Switzerland",
-            "Brazil", "Morocco", "Haiti", "Scotland",
-            "United States", "Paraguay", "Australia", "Turkey",
-            "Germany", "Curaçao", "Ivory Coast", "Ecuador",
-            "Netherlands", "Japan", "Sweden", "Tunisia",
-            "Belgium", "Egypt", "Iran", "New Zealand",
-            "Spain", "Cape Verde", "Saudi Arabia", "Uruguay",
-            "France", "Senegal", "Iraq", "Norway",
-            "Argentina", "Algeria", "Austria", "Jordan",
-            "Portugal", "DR Congo", "Uzbekistan", "Colombia",
-            "England", "Croatia", "Ghana", "Panama",
-        }
-        mapped = set(TEAM_SHORT_TO_NAME.values())
-        missing = expected_teams - mapped
-        assert not missing, f"Teams not in TEAM_SHORT_TO_NAME: {missing}"
-
-    def test_unknown_code_falls_back_to_german_name(self):
-        match = {"team1": {"teamName": "UnknownTeam", "shortName": "UNK"}}
-        assert resolve_team_name(match, "team1") == "UnknownTeam"
-
-
-class TestFindMatchNumber:
-    def test_exact_match(self, sample_matches):
-        result = find_match_number(sample_matches, "Brazil", "Morocco", "2026-06-13")
-        assert result == 7
-
-    def test_reversed_teams(self, sample_matches):
-        result = find_match_number(sample_matches, "Morocco", "Brazil", "2026-06-13")
-        assert result == 7
-
-    def test_wrong_date_returns_none(self, sample_matches):
-        result = find_match_number(sample_matches, "Brazil", "Morocco", "2026-06-14")
-        assert result is None
-
-    def test_unknown_teams_returns_none(self, sample_matches):
-        result = find_match_number(sample_matches, "Spain", "Italy", "2026-06-13")
-        assert result is None
-
-
-class TestExtractFinalScore:
-    def test_finished_match(self, api_match_finished):
-        home, away = extract_final_score(api_match_finished)
-        assert home == 2
-        assert away == 0
-
-    def test_live_match_returns_halftime(self, api_match_live):
-        home, away = extract_final_score(api_match_live)
-        assert home == 1
-        assert away == 0
-
-    def test_not_started_returns_none(self, api_match_not_started):
-        home, away = extract_final_score(api_match_not_started)
-        assert home is None
-        assert away is None
-
-
-class TestDetermineStatus:
-    def test_finished(self, api_match_finished):
-        assert determine_status(api_match_finished) == "FT"
-
-    def test_live(self, api_match_live):
-        assert determine_status(api_match_live) == "LIVE"
-
-    def test_not_started(self, api_match_not_started):
-        assert determine_status(api_match_not_started) == "NS"
-
-
-class TestProcessApiData:
-    def test_processes_finished_match(self, sample_matches, api_match_finished):
+class TestApplyRecords:
+    def test_applies_finished_record(self, sample_matches):
         scores = {}
-        updated = process_api_data([api_match_finished], sample_matches, scores)
+        updated = apply_records([_record("Brazil", "Morocco", BRA_UTC, 2, 0, "FT")], sample_matches, scores)
         assert updated == 1
-        assert scores["7"]["score_home"] == 2
-        assert scores["7"]["score_away"] == 0
-        assert scores["7"]["status"] == "FT"
+        assert scores["7"] == {"score_home": 2, "score_away": 0, "status": "FT"}
 
-    def test_processes_live_match(self, sample_matches, api_match_live):
+    def test_applies_live_record(self, sample_matches):
         scores = {}
-        updated = process_api_data([api_match_live], sample_matches, scores)
+        updated = apply_records([_record("Brazil", "Morocco", BRA_UTC, 1, 0, "LIVE")], sample_matches, scores)
         assert updated == 1
         assert scores["7"]["status"] == "LIVE"
 
-    def test_skips_not_started(self, sample_matches, api_match_not_started):
+    def test_resolves_match_crossing_utc_midnight(self, sample_matches):
+        # Regression: Korea vs Czech, UTC date != local date. Must still match #2.
         scores = {}
-        updated = process_api_data([api_match_not_started], sample_matches, scores)
-        assert updated == 0
+        updated = apply_records([_record("South Korea", "Czech Republic", KOR_UTC, 0, 1, "LIVE")], sample_matches, scores)
+        assert updated == 1
+        assert scores["2"] == {"score_home": 0, "score_away": 1, "status": "LIVE"}
 
-    def test_only_finished_skips_live(self, sample_matches, api_match_live):
-        scores = {}
-        updated = process_api_data([api_match_live], sample_matches, scores, only_finished=True)
-        assert updated == 0
-
-    def test_does_not_update_if_same(self, sample_matches, api_match_finished):
+    def test_idempotent_when_unchanged(self, sample_matches):
         scores = {"7": {"score_home": 2, "score_away": 0, "status": "FT"}}
-        updated = process_api_data([api_match_finished], sample_matches, scores)
+        updated = apply_records([_record("Brazil", "Morocco", BRA_UTC, 2, 0, "FT")], sample_matches, scores)
         assert updated == 0
 
-    def test_updates_if_score_changed(self, sample_matches, api_match_finished):
+    def test_updates_when_score_changed(self, sample_matches):
         scores = {"7": {"score_home": 1, "score_away": 0, "status": "LIVE"}}
-        updated = process_api_data([api_match_finished], sample_matches, scores)
+        updated = apply_records([_record("Brazil", "Morocco", BRA_UTC, 2, 0, "FT")], sample_matches, scores)
         assert updated == 1
         assert scores["7"]["score_home"] == 2
+
+    def test_unmatched_record_skipped(self, sample_matches):
+        scores = {}
+        updated = apply_records([_record("Spain", "Italy", BRA_UTC, 1, 1, "FT")], sample_matches, scores)
+        assert updated == 0
+        assert scores == {}
+
+
+class TestLiveFallback:
+    def test_uses_espn_when_available(self, sample_matches, temp_scores, monkeypatch):
+        monkeypatch.setattr(update_scores, "load_matches", lambda: sample_matches)
+        monkeypatch.setattr(espn, "fetch", lambda today: [_record("Brazil", "Morocco", BRA_UTC, 3, 1, "FT")])
+        called = {"openliga": False}
+        monkeypatch.setattr(openligadb, "fetch", lambda: called.__setitem__("openliga", True) or [])
+
+        update_scores.cmd_live()
+
+        assert called["openliga"] is False  # ESPN had data, no fallback
+        assert load_scores()["7"]["score_home"] == 3
+
+    def test_falls_back_to_openligadb_when_espn_empty(self, sample_matches, temp_scores, monkeypatch):
+        monkeypatch.setattr(update_scores, "load_matches", lambda: sample_matches)
+        monkeypatch.setattr(espn, "fetch", lambda today: [])
+        monkeypatch.setattr(openligadb, "fetch", lambda: [_record("Brazil", "Morocco", BRA_UTC, 0, 0, "FT")])
+
+        update_scores.cmd_live()
+
+        assert load_scores()["7"] == {"score_home": 0, "score_away": 0, "status": "FT"}
 
 
 class TestScoresJsonIntegrity:

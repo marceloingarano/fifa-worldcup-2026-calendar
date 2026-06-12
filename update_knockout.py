@@ -30,7 +30,7 @@ from fetch_matches import (
     VENUE_CITIES_PT,
     normalize_stadium,
 )
-from update_scores import TEAM_SHORT_TO_NAME
+from score_sources.openligadb import TEAM_SHORT_TO_NAME
 
 MATCHES_FILE = Path(__file__).parent / "matches.json"
 API_BASE_URL = "https://api.openligadb.de"
