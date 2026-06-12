@@ -35,6 +35,8 @@ git add scores.json docs/fifa-worldcup-2026.ics && git commit -m "Live scores up
 
 **Frequência:** a cada 10 minutos durante a janela de jogos.
 
+> **Nota sobre o cron:** o agendamento usa minutos desalinhados (`3,13,23,33,43,53`) em vez de `*/10`. O scheduler do GitHub Actions atrasa ou descarta execuções agendadas nos minutos "redondos" (`:00`, `:10`, ...) por congestionamento — durante o jogo de abertura isso causou gaps de 100–160 min e o placar ao vivo não foi capturado. Os minutos com offset saem da fila de pico. **Não reverter para `*/10`.** Para placar ao vivo crítico, prefira o disparo manual (`workflow_dispatch`).
+
 **Janela de jogos típica:** primeiro kick-off até último jogo + 30min de margem (prorrogação/penalidades).
 
 **O que faz:** busca todos os jogos na OpenLigaDB e atualiza scores.json com jogos em andamento e finalizados.
