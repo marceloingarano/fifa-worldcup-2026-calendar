@@ -85,7 +85,7 @@ Notes:    FIFA World Cup 2026 — Grupo C
           Jogo #7
           🕐 18:00 (ET)
           📺 CazéTV
-          🔗 https://www.youtube.com/@CasimiroMiguel
+          🔗 https://www.youtube.com/@CazeTV
 ```
 
 Rules:

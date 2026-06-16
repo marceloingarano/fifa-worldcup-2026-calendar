@@ -34,7 +34,7 @@ def match_no_score():
         "score_home": None,
         "score_away": None,
         "tv": "CazéTV",
-        "streaming": "https://www.youtube.com/@CasimiroMiguel",
+        "streaming": "https://www.youtube.com/@CazeTV",
     }
 
 
@@ -53,7 +53,7 @@ def match_with_score():
         "score_home": 2,
         "score_away": 0,
         "tv": "CazéTV",
-        "streaming": "https://www.youtube.com/@CasimiroMiguel",
+        "streaming": "https://www.youtube.com/@CazeTV",
     }
 
 
@@ -129,7 +129,7 @@ class TestBuildEventDescription:
 
     def test_contains_streaming_link(self, match_no_score):
         desc = build_event_description(match_no_score)
-        assert "https://www.youtube.com/@CasimiroMiguel" in desc
+        assert "https://www.youtube.com/@CazeTV" in desc
 
     def test_no_streaming_if_empty(self, match_knockout_tbd):
         desc = build_event_description(match_knockout_tbd)

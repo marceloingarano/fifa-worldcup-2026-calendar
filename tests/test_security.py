@@ -43,7 +43,7 @@ class TestSanitizeText:
 
 class TestValidateUrl:
     def test_valid_youtube_url(self):
-        url = "https://www.youtube.com/@CasimiroMiguel"
+        url = "https://www.youtube.com/@CazeTV"
         assert validate_url(url) == url
 
     def test_valid_globo_url(self):
@@ -85,7 +85,7 @@ class TestSanitizeEvent:
             title="🇧🇷 BRASIL vs Marrocos 🇲🇦 — Grupo C",
             description="FIFA World Cup 2026\nJogo #7\n🕐 18:00 (ET)",
             location="MetLife Stadium, East Rutherford, EUA",
-            url_fields=["https://www.youtube.com/@CasimiroMiguel"]
+            url_fields=["https://www.youtube.com/@CazeTV"]
         )
         assert result["issues"] == []
         assert "BRASIL" in result["title"]
