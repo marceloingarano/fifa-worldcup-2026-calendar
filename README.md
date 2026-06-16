@@ -23,7 +23,7 @@ https://copa2026.trakas.com.br/fifa-worldcup-2026.ics
 🇧🇷 BRASIL 2 x 0 Marrocos 🇲🇦 — Grupo C     (with score)
 
 Location: MetLife Stadium, East Rutherford, EUA
-Notes:    🕐 18:00 (ET) | 📺 CazéTV | 🔗 youtube.com/@CasimiroMiguel
+Notes:    🕐 18:00 (ET) | 📺 CazéTV | 🔗 youtube.com/@CazeTV
 ```
 
 - 104 matches with emoji flags and team names in Portuguese
