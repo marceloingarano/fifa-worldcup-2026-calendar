@@ -75,8 +75,8 @@
     "status": "FT"
   },
   "15": {
-    "score_home": 1,
-    "score_away": 1,
-    "status": "LIVE"
+    "score_home": 2,
+    "score_away": 2,
+    "status": "FT"
   }
 }
