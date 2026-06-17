@@ -27,7 +27,7 @@ Notes:    🕐 18:00 (ET) | 📺 CazéTV | 🔗 youtube.com/@CazeTV
 ```
 
 - 104 matches with emoji flags and team names in Portuguese
-- Scores updated automatically every 10 minutes during matches
+- Scores updated automatically every 20 minutes
 - Knockout teams resolved automatically as the tournament progresses
 - Calendar syncs every 6 hours on your device
 
@@ -40,7 +40,7 @@ generate_calendar  → Merges both → .ics served via GitHub Pages
 ```
 
 **Automation (GitHub Actions):**
-- Scores update every 10min during match hours (Jun 11 – Jul 19)
+- Scores update every 20min, all day (Jun 11 – Jul 19)
 - Knockout teams resolve daily after group stage ends
 
 ## Development
