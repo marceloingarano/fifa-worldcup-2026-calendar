@@ -86,7 +86,12 @@
   },
   "18": {
     "score_home": 1,
-    "score_away": 2,
+    "score_away": 4,
+    "status": "FT"
+  },
+  "19": {
+    "score_home": 1,
+    "score_away": 0,
     "status": "LIVE"
   }
 }
