@@ -51,9 +51,13 @@ python generate_calendar.py
 git add scores.json docs/fifa-worldcup-2026.ics && git commit -m "Live scores update" && git push
 ```
 
-**Frequência:** a cada 10 minutos durante a janela de jogos.
+**Frequência:** a cada 20 minutos, o dia inteiro (24h), durante junho e julho.
 
-> **Nota sobre o cron:** o agendamento usa minutos desalinhados (`3,13,23,33,43,53`) em vez de `*/10`. O scheduler do GitHub Actions atrasa ou descarta execuções agendadas nos minutos "redondos" (`:00`, `:10`, ...) por congestionamento — durante o jogo de abertura isso causou gaps de 100–160 min e o placar ao vivo não foi capturado. Os minutos com offset saem da fila de pico. **Não reverter para `*/10`.** Para placar ao vivo crítico, prefira o disparo manual (`workflow_dispatch`).
+> **Nota sobre o cron (`9,29,49 * * 6-7 *`):**
+> - **Por que 24h e não só horário de jogo:** os jogos cobrem 12 timezones e dão kickoff em toda a faixa 16:00–04:00 UTC. Rodar o dia todo elimina qualquer furo de cobertura e evita conta de timezone (o cron do GitHub é sempre UTC). O check de data dentro do job ainda limita o trabalho real à janela do torneio (11/Jun–19/Jul).
+> - **Por que 20 min e não 10:** o scheduler do GitHub Actions é best-effort e descarta a maioria das execuções de alta frequência — o histórico de `*/10` entregou intervalos reais de 70–160+ min, não 10. Pedir menos slots (3/h) melhora a taxa de sucesso individual sem aumentar o total diário (~72/dia vs ~78/dia antes).
+> - **Minutos desalinhados (`9,29,49`)** em vez de `*/20`: minutos "redondos" (`:00`, `:20`, `:40`) sofrem mais congestionamento. **Não reverter para `*/20` nem para `*/10`.**
+> - Para placar ao vivo crítico, prefira o disparo manual (`workflow_dispatch`).
 
 **Janela de jogos típica:** primeiro kick-off até último jogo + 30min de margem (prorrogação/penalidades).
 
@@ -183,7 +187,7 @@ Dois workflows rodam automaticamente durante a Copa — zero intervenção neces
 
 | Workflow | Frequência | Período | O que faz |
 |---|---|---|---|
-| `update-scores.yml` | A cada 10min | 11/Jun – 19/Jul, 12h-00h UTC | Busca scores live + finais, regenera .ics, commit/push |
+| `update-scores.yml` | A cada 20min, 24h | 11/Jun – 19/Jul (check de data no job) | Busca scores live + finais, regenera .ics, commit/push |
 | `update-knockout.yml` | 1x/dia (03h BRT) | 27/Jun – 19/Jul | Resolve placeholders do mata-mata, regenera .ics, commit/push |
 
 **Características:**

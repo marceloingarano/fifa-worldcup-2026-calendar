@@ -2,11 +2,13 @@ name: Update Scores
 
 on:
   schedule:
-    # Every 10 minutes during match hours (15:00-03:00 UTC = 12:00-00:00 BRT).
-    # Offset minutes (3,13,...,53) instead of */10 to avoid GitHub's on-the-hour
-    # scheduler congestion, which delays/drops runs at :00,:10,... See OPERATIONS.md.
-    - cron: '3,13,23,33,43,53 15-23 * 6-7 *'
-    - cron: '3,13,23,33,43,53 0-3 * 6-7 *'
+    # Every 20 minutes, ALL DAY, in June & July. Matches span 12 timezones and
+    # kick off across the full 16:00–04:00 UTC range; running 24h removes any
+    # coverage gap and sidesteps timezone math (GitHub cron is always UTC). The
+    # in-job date check still limits actual work to the tournament window.
+    # Offset minutes (9,29,49) instead of */20 to avoid GitHub's on-the-hour
+    # scheduler congestion, which delays/drops runs at :00,:20,... See OPERATIONS.md.
+    - cron: '9,29,49 * * 6-7 *'
   workflow_dispatch: # Manual trigger (skips date check for testing)
 
 jobs:
