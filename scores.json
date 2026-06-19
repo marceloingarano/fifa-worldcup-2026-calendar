@@ -130,7 +130,12 @@
     "status": "FT"
   },
   "27": {
-    "score_home": 3,
+    "score_home": 6,
+    "score_away": 0,
+    "status": "FT"
+  },
+  "28": {
+    "score_home": 0,
     "score_away": 0,
     "status": "LIVE"
   }
