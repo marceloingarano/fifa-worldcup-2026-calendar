@@ -142,6 +142,11 @@
   "32": {
     "score_home": 2,
     "score_away": 0,
+    "status": "FT"
+  },
+  "30": {
+    "score_home": 0,
+    "score_away": 1,
     "status": "LIVE"
   }
 }
