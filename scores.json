@@ -187,6 +187,11 @@
   "39": {
     "score_home": 0,
     "score_away": 0,
+    "status": "FT"
+  },
+  "37": {
+    "score_home": 0,
+    "score_away": 0,
     "status": "LIVE"
   }
 }
