@@ -183,5 +183,10 @@
     "score_home": 4,
     "score_away": 0,
     "status": "FT"
+  },
+  "39": {
+    "score_home": 0,
+    "score_away": 0,
+    "status": "LIVE"
   }
 }
