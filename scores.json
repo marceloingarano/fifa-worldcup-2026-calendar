@@ -205,7 +205,12 @@
     "status": "FT"
   },
   "42": {
-    "score_home": 1,
+    "score_home": 2,
+    "score_away": 0,
+    "status": "LIVE"
+  },
+  "41": {
+    "score_home": 0,
     "score_away": 0,
     "status": "LIVE"
   }
