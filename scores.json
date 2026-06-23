@@ -205,13 +205,18 @@
     "status": "FT"
   },
   "42": {
-    "score_home": 2,
+    "score_home": 3,
     "score_away": 0,
-    "status": "LIVE"
+    "status": "FT"
   },
   "41": {
-    "score_home": 0,
-    "score_away": 0,
+    "score_home": 3,
+    "score_away": 2,
+    "status": "FT"
+  },
+  "44": {
+    "score_home": 1,
+    "score_away": 1,
     "status": "LIVE"
   }
 }
