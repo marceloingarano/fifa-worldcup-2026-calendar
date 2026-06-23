@@ -223,5 +223,10 @@
     "score_home": 5,
     "score_away": 0,
     "status": "FT"
+  },
+  "45": {
+    "score_home": 0,
+    "score_away": 0,
+    "status": "LIVE"
   }
 }
