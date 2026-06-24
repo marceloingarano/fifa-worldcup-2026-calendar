@@ -248,5 +248,15 @@
     "score_home": 2,
     "score_away": 1,
     "status": "FT"
+  },
+  "50": {
+    "score_home": 2,
+    "score_away": 2,
+    "status": "LIVE"
+  },
+  "49": {
+    "score_home": 0,
+    "score_away": 1,
+    "status": "LIVE"
   }
 }
