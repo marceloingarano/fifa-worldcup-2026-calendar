@@ -137,7 +137,9 @@ Depois: `python generate_calendar.py`
 Conforme a Copa avança, os placeholders ("Winner Group C", "Runner-up Group F") são substituídos pelos times reais.
 
 **Automático (GitHub Actions):**
-Roda diariamente às 03h BRT a partir de 27/Jun. Busca times reais via OpenLigaDB + Wikipedia fallback.
+Roda diariamente às 03h BRT a partir de 18/Jun (meio da fase de grupos — os primeiros classificados são definidos antes do fim dela). Busca times reais via OpenLigaDB + Wikipedia fallback.
+
+> **Nota:** a OpenLigaDB ainda expõe placeholders de posição (`2A`, `1C`...) durante a fase de grupos, então quem resolve de fato é o fallback da Wikipedia, e só os lados já definidos (ex.: `Winner Group X`). Os adversários são preenchidos incrementalmente conforme os grupos terminam.
 
 **Manual:**
 ```bash
@@ -188,7 +190,7 @@ Dois workflows rodam automaticamente durante a Copa — zero intervenção neces
 | Workflow | Frequência | Período | O que faz |
 |---|---|---|---|
 | `update-scores.yml` | A cada 20min, 24h | 11/Jun – 19/Jul (check de data no job) | Busca scores live + finais, regenera .ics, commit/push |
-| `update-knockout.yml` | 1x/dia (03h BRT) | 27/Jun – 19/Jul | Resolve placeholders do mata-mata, regenera .ics, commit/push |
+| `update-knockout.yml` | 1x/dia (03h BRT) | 18/Jun – 19/Jul | Resolve placeholders do mata-mata, regenera .ics, commit/push |
 
 **Características:**
 - Ambos verificam se estão dentro da janela do torneio antes de executar (skip fora do período)

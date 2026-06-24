@@ -110,7 +110,7 @@ Rules:
 | Workflow | When | What |
 |---|---|---|
 | `update-scores.yml` | Every 20min, all day, Jun–Jul (in-job date check limits to Jun 11 – Jul 19) | Fetches scores → regenerates .ics → auto-commit |
-| `update-knockout.yml` | Daily 06:00 UTC, Jun 27 – Jul 19 | Resolves knockout placeholders → auto-commit |
+| `update-knockout.yml` | Daily 06:00 UTC, Jun 18 – Jul 19 | Resolves knockout placeholders → auto-commit |
 | `tests.yml` | Every push/PR | Unit tests + E2E consistency |
 
 Scheduled triggers skip execution outside tournament window via date check.
