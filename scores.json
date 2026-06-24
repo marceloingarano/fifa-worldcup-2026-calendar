@@ -250,13 +250,13 @@
     "status": "FT"
   },
   "50": {
-    "score_home": 2,
+    "score_home": 4,
     "score_away": 2,
     "status": "LIVE"
   },
   "49": {
     "score_home": 0,
-    "score_away": 1,
+    "score_away": 3,
     "status": "LIVE"
   }
 }
