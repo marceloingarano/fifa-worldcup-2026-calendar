@@ -21,8 +21,11 @@ jobs:
             exit 0
           fi
           TODAY=$(date +%Y-%m-%d)
-          # Only relevant from group stage end (Jun 27) until final (Jul 19)
-          if [[ "$TODAY" < "2026-06-27" || "$TODAY" > "2026-07-19" ]]; then
+          # Start mid-group-stage (Jun 18): group winners get decided well before
+          # the group stage ends, so we resolve qualified teams incrementally
+          # rather than waiting for Jun 27. update_knockout.py exits early when
+          # there's nothing to resolve, so early runs are cheap no-ops.
+          if [[ "$TODAY" < "2026-06-18" || "$TODAY" > "2026-07-19" ]]; then
             echo "Outside knockout window ($TODAY). Skipping."
             echo "skip=true" >> $GITHUB_OUTPUT
           else
