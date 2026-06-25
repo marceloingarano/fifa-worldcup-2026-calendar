@@ -252,11 +252,21 @@
   "50": {
     "score_home": 4,
     "score_away": 2,
-    "status": "LIVE"
+    "status": "FT"
   },
   "49": {
     "score_home": 0,
     "score_away": 3,
-    "status": "LIVE"
+    "status": "FT"
+  },
+  "53": {
+    "score_home": 0,
+    "score_away": 3,
+    "status": "FT"
+  },
+  "54": {
+    "score_home": 1,
+    "score_away": 0,
+    "status": "FT"
   }
 }
