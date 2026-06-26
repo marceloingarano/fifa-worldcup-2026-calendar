@@ -301,12 +301,12 @@
   },
   "61": {
     "score_home": 1,
-    "score_away": 3,
-    "status": "LIVE"
+    "score_away": 4,
+    "status": "FT"
   },
   "62": {
-    "score_home": 1,
+    "score_home": 5,
     "score_away": 0,
-    "status": "LIVE"
+    "status": "FT"
   }
 }
