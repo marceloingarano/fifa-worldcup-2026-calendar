@@ -298,5 +298,15 @@
     "score_home": 3,
     "score_away": 2,
     "status": "FT"
+  },
+  "61": {
+    "score_home": 1,
+    "score_away": 3,
+    "status": "LIVE"
+  },
+  "62": {
+    "score_home": 1,
+    "score_away": 0,
+    "status": "LIVE"
   }
 }
