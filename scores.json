@@ -322,11 +322,11 @@
   "63": {
     "score_home": 1,
     "score_away": 1,
-    "status": "LIVE"
+    "status": "FT"
   },
   "64": {
-    "score_home": 0,
-    "score_away": 3,
-    "status": "LIVE"
+    "score_home": 1,
+    "score_away": 5,
+    "status": "FT"
   }
 }
