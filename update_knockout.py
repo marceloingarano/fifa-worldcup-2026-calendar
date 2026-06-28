@@ -18,7 +18,9 @@ Usage:
 import argparse
 import json
 import re
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
@@ -31,6 +33,7 @@ from fetch_matches import (
     normalize_stadium,
 )
 from score_sources.openligadb import TEAM_SHORT_TO_NAME
+from score_sources.matching import find_match_by_instant
 
 MATCHES_FILE = Path(__file__).parent / "matches.json"
 API_BASE_URL = "https://api.openligadb.de"
@@ -82,52 +85,57 @@ def _convert_utc_to_local_time(utc_time: str, timezone: str) -> str:
         return ""
 
 
-def _find_knockout_match(matches: list[dict], match_date: str, match_time_utc: str) -> dict | None:
-    """Find a knockout match by date + time (UTC converted to local)."""
-    candidates = []
-    for m in matches:
-        if m["date"] != match_date:
-            continue
-        if m["stage"].startswith("Grupo"):
-            continue
-        if not (is_placeholder(m["home"]) or is_placeholder(m["away"])):
-            continue
-        candidates.append(m)
+def _is_knockout(m: dict) -> bool:
+    return not m["stage"].startswith("Grupo")
 
-    if not candidates:
+
+def _apply_team(target: dict, side: str, name: str) -> bool:
+    """Set target[side] to name when the official source gives a real team that
+    differs from what's stored. Overwrites a wrong real team (auto-correction),
+    never replaces a real team with a placeholder. Returns True if changed.
+    """
+    if not name or is_placeholder(name):
+        return False
+    if target[side] == name:
+        return False
+    old = target[side]
+    target[side] = name
+    kind = "fixed" if not is_placeholder(old) else "set"
+    print(f"    #{target['match_number']}: {old} → {name} ({kind})")
+    return True
+
+
+def _find_knockout_match(matches: list[dict], match_dt_utc: str) -> dict | None:
+    """Find a knockout match by full UTC kickoff instant (robust to timezones).
+
+    match_dt_utc is an ISO string like '2026-06-29T20:30:00Z'. Matches the
+    knockout match whose true UTC instant is closest, so a provisional/partial
+    time can no longer cross-assign a team to the wrong fixture.
+    """
+    if not match_dt_utc:
         return None
-
-    if len(candidates) == 1:
-        return candidates[0]
-
-    # Multiple matches on same day — match by time
-    for m in candidates:
-        local_time = _convert_utc_to_local_time(match_time_utc, m["timezone"])
-        if local_time == m["time"]:
-            return m
-
-    return None
+    try:
+        kickoff = datetime.fromisoformat(match_dt_utc.replace("Z", "+00:00")).astimezone(ZoneInfo("UTC"))
+    except Exception:
+        return None
+    return find_match_by_instant(matches, kickoff, predicate=_is_knockout)
 
 
 def _find_knockout_match_by_local_time(matches: list[dict], match_date: str, local_time: str) -> dict | None:
-    """Find a knockout match by date + local time (Wikipedia already provides local time)."""
-    candidates = []
-    for m in matches:
-        if m["date"] != match_date:
-            continue
-        if m["stage"].startswith("Grupo"):
-            continue
-        if not (is_placeholder(m["home"]) or is_placeholder(m["away"])):
-            continue
-        candidates.append(m)
+    """Find a knockout match by date + local time (Wikipedia provides local time).
+
+    Both matches.json and Wikipedia use local stadium date/time, so this is an
+    exact compare. The candidate filter is NOT restricted to placeholders —
+    that lets a wrong real team be corrected from the official bracket.
+    """
+    candidates = [m for m in matches if m["date"] == match_date and _is_knockout(m)]
 
     if not candidates:
         return None
-
     if len(candidates) == 1:
         return candidates[0]
 
-    # Multiple matches on same day — match by local time
+    # Multiple matches on same day — disambiguate by local kickoff time.
     for m in candidates:
         if m["time"] == local_time:
             return m
@@ -166,29 +174,21 @@ def update_from_openligadb(matches: list[dict]) -> int:
         print(f"  Matchday {matchday} ({stage}): {len(api_data)} fixtures")
 
         for api_match in api_data:
-            home_short = api_match["team1"].get("shortName", "")
-            away_short = api_match["team2"].get("shortName", "")
-            home_name = TEAM_SHORT_TO_NAME.get(home_short, "")
-            away_name = TEAM_SHORT_TO_NAME.get(away_short, "")
+            home_name = TEAM_SHORT_TO_NAME.get(api_match["team1"].get("shortName", ""), "")
+            away_name = TEAM_SHORT_TO_NAME.get(api_match["team2"].get("shortName", ""), "")
 
-            if not home_name or not away_name:
+            # OpenLigaDB exposes positional placeholders (2A, 1C...) until the
+            # bracket is finalized — those won't resolve to a real name. Apply
+            # whichever side already has a real team.
+            if not home_name and not away_name:
                 continue
 
-            match_date = api_match.get("matchDateTimeUTC", "")[:10]
-            match_time_utc = api_match.get("matchDateTimeUTC", "")[11:16]
-
-            target = _find_knockout_match(matches, match_date, match_time_utc)
+            target = _find_knockout_match(matches, api_match.get("matchDateTimeUTC", ""))
             if target is None:
                 continue
 
-            if is_placeholder(target["home"]) and home_name:
-                print(f"    #{target['match_number']}: {target['home']} → {home_name}")
-                target["home"] = home_name
-                updated += 1
-            if is_placeholder(target["away"]) and away_name:
-                print(f"    #{target['match_number']}: {target['away']} → {away_name}")
-                target["away"] = away_name
-                updated += 1
+            updated += _apply_team(target, "home", home_name)
+            updated += _apply_team(target, "away", away_name)
 
     return updated
 
@@ -232,14 +232,8 @@ def update_from_wikipedia(matches: list[dict]) -> int:
         if target is None:
             continue
 
-        if is_placeholder(target["home"]) and not is_placeholder(wiki_home):
-            print(f"    #{target['match_number']}: {target['home']} → {wiki_home}")
-            target["home"] = wiki_home
-            updated += 1
-        if is_placeholder(target["away"]) and not is_placeholder(wiki_away):
-            print(f"    #{target['match_number']}: {target['away']} → {wiki_away}")
-            target["away"] = wiki_away
-            updated += 1
+        updated += _apply_team(target, "home", wiki_home)
+        updated += _apply_team(target, "away", wiki_away)
 
         if target["stadium"] == "TBD" and wm.get("stadium"):
             stadium = normalize_stadium(wm["stadium"])

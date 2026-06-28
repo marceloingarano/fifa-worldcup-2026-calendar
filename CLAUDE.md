@@ -67,7 +67,7 @@ that, fixing a latent bug where the old date-string comparison missed all 36.
 | `fetch_matches.py` | Scrapes Wikipedia (lxml parser, `div.footballbox` class) to populate matches.json. |
 | `update_scores.py` | Orchestration + CLI: pulls `ScoreRecord`s from `score_sources/`, matches them, writes scores.json. No API logic. |
 | `score_sources/` | Per-source API modules (espn, openligadb) + shared matcher. See "Score sources" above. |
-| `update_knockout.py` | Resolves placeholder teams ("Winner Group C" → "Brazil") via OpenLigaDB + Wikipedia fallback. Matches by date + time. |
+| `update_knockout.py` | Resolves placeholder teams ("Winner Group C" → "Brazil") via OpenLigaDB + Wikipedia fallback. Matches fixtures by UTC kickoff instant (OpenLigaDB) or local date+time (Wikipedia); auto-corrects a wrong real team when the official bracket disagrees. |
 | `security/sanitizer.py` | Input sanitization: URL allowlist, CRLF removal, forbidden properties, field limits. |
 | `security/validator.py` | Post-generation .ics scanner. Runs standalone or in CI. |
 | `security/allowed_domains.json` | Allowlisted streaming/TV domains. URLs outside this list are rejected. |
@@ -120,7 +120,7 @@ Requires repo Settings → Actions → Workflow permissions → "Read and write 
 ## Testing
 
 ```bash
-python -m pytest tests/ -v         # All 170 tests
+python -m pytest tests/ -v         # All 175 tests
 python -m pytest tests/ --ignore=tests/test_e2e_consistency.py  # Unit + security (no network)
 python -m pytest tests/test_e2e_consistency.py -v               # E2E vs Wikipedia
 python -m pytest tests/test_security.py -v                      # Security tests only
@@ -133,7 +133,8 @@ Tests enforce:
 - Title format with/without scores, BRASIL uppercase
 - Score merge doesn't mutate original data
 - Team name normalization covers all API variants
-- Knockout matching uses date + time (prevents cross-assignment)
+- Knockout matching uses UTC kickoff instant (prevents cross-assignment across timezones)
+- Knockout auto-corrects a wrong real team when the official bracket disagrees
 - E2E: random matches validated against live Wikipedia
 - Security: URL allowlist, CRLF injection, forbidden properties, field limits
 - .ics output scanned for VALARM, ATTACH, ATTENDEE, non-HTTPS URLs
@@ -141,9 +142,9 @@ Tests enforce:
 ## Important constraints
 
 - `matches.json` NEVER contains score fields — those live in `scores.json`
-- `update_knockout.py` only modifies teams that are placeholders (`is_placeholder()`) — never overwrites real team names
-- Knockout matching uses date + local time to differentiate multiple matches on same day
-- Pre-commit hook runs all 170 tests before allowing commits
+- `update_knockout.py` never replaces a real team with a placeholder, but DOES auto-correct a wrong real team when the official source (OpenLigaDB/Wikipedia) disagrees — this is what un-freezes an earlier cross-assignment
+- Knockout matching uses the UTC kickoff instant (OpenLigaDB) to differentiate multiple matches on the same day, robust to timezone/DST
+- Pre-commit hook runs all 175 tests before allowing commits
 - Calendar refresh interval is 6 hours (PT6H in .ics)
 - All URLs in the .ics must be HTTPS and from `security/allowed_domains.json`
 - Branch protection requires PR + passing status checks for merge to main
