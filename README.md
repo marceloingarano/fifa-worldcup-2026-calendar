@@ -55,7 +55,7 @@ python update_knockout.py          # Resolve knockout placeholders
 python generate_calendar.py        # Regenerate .ics
 python -m security.validator       # Validate .ics security
 
-python -m pytest tests/ -v         # Run 170 tests
+python -m pytest tests/ -v         # Run 175 tests
 ```
 
 See [OPERATIONS.md](OPERATIONS.md) for full procedures, rollback plans, security details, and automation.

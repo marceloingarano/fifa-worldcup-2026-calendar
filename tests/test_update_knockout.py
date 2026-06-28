@@ -9,6 +9,7 @@ import pytest
 from update_knockout import (
     is_placeholder,
     has_knockout_placeholders,
+    _apply_team,
     _find_knockout_match,
     _find_knockout_match_by_local_time,
     _convert_utc_to_local_time,
@@ -157,7 +158,7 @@ class TestSafetyGuardrails:
         assert local == "18:00"
 
     def test_find_knockout_match_by_utc(self):
-        """OpenLigaDB UTC time resolves to correct local match."""
+        """OpenLigaDB UTC instant resolves to the correct local match."""
         matches = [
             {"match_number": 73, "stage": "16 Avos de Final", "home": "Winner Group C",
              "away": "Runner-up Group F", "date": "2026-06-29", "time": "12:00",
@@ -168,13 +169,58 @@ class TestSafetyGuardrails:
              "timezone": "America/New_York", "stadium": "MetLife Stadium", "city": "East Rutherford, EUA",
              "tv": "", "streaming": ""},
         ]
-        # UTC 17:00 = Chicago 12:00 (CDT = UTC-5)
-        result = _find_knockout_match(matches, "2026-06-29", "17:00")
+        # UTC 17:00 = Chicago 12:00 (CDT = UTC-5) → match 73
+        result = _find_knockout_match(matches, "2026-06-29T17:00:00Z")
         assert result["match_number"] == 73
 
-        # UTC 20:00 = New York 16:00 (EDT = UTC-4)
-        result = _find_knockout_match(matches, "2026-06-29", "20:00")
+        # UTC 20:00 = New York 16:00 (EDT = UTC-4) → match 74
+        result = _find_knockout_match(matches, "2026-06-29T20:00:00Z")
         assert result["match_number"] == 74
+
+    def test_find_knockout_match_no_cross_assignment(self):
+        """Regression: a provisional/off UTC instant must not cross-assign.
+
+        This is the bug that put Japan in both #74 and #76. A fixture at 20:30
+        UTC must resolve to #74 (its true instant), never to #76 at 17:00 UTC.
+        """
+        matches = [
+            {"match_number": 76, "stage": "16 Avos de Final", "home": "Winner Group A",
+             "away": "Runner-up Group B", "date": "2026-06-29", "time": "12:00",
+             "timezone": "America/Chicago", "stadium": "S1", "city": "C1", "tv": "", "streaming": ""},
+            {"match_number": 74, "stage": "16 Avos de Final", "home": "Winner Group C",
+             "away": "Runner-up Group D", "date": "2026-06-29", "time": "16:30",
+             "timezone": "America/New_York", "stadium": "S2", "city": "C2", "tv": "", "streaming": ""},
+        ]
+        # 17:00 UTC = Chicago 12:00 → #76
+        assert _find_knockout_match(matches, "2026-06-29T17:00:00Z")["match_number"] == 76
+        # 20:30 UTC = New York 16:30 → #74 (NOT #76)
+        assert _find_knockout_match(matches, "2026-06-29T20:30:00Z")["match_number"] == 74
+
+
+class TestApplyTeam:
+    def _match(self, home, away):
+        return {"match_number": 74, "home": home, "away": away}
+
+    def test_fills_placeholder(self):
+        m = self._match("Winner Group C", "Runner-up Group D")
+        assert _apply_team(m, "home", "Germany") == 1
+        assert m["home"] == "Germany"
+
+    def test_corrects_wrong_real_team(self):
+        """Auto-correction: official source overrides a wrong real team."""
+        m = self._match("Germany", "Japan")
+        assert _apply_team(m, "away", "Paraguay") == 1
+        assert m["away"] == "Paraguay"
+
+    def test_never_writes_placeholder_over_real(self):
+        m = self._match("Germany", "Paraguay")
+        assert _apply_team(m, "away", "Runner-up Group D") == 0
+        assert m["away"] == "Paraguay"
+
+    def test_noop_when_already_correct(self):
+        m = self._match("Germany", "Paraguay")
+        assert _apply_team(m, "home", "Germany") == 0
+        assert m["home"] == "Germany"
 
 
 class TestMatchesJsonBackupStrategy:

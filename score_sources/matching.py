@@ -41,6 +41,31 @@ def match_utc_instant(match: dict) -> datetime | None:
         return None
 
 
+def find_match_by_instant(matches: list[dict], kickoff_utc: datetime,
+                          predicate=None) -> dict | None:
+    """Find the match whose UTC kickoff instant is closest to kickoff_utc.
+
+    Unlike resolve_match_number (which keys on the team pair), this keys ONLY on
+    the kickoff instant — used for knockout matches whose teams are still
+    placeholders. An optional predicate(match) -> bool filters candidates
+    (e.g. "knockout matches only"). Returns the closest match within
+    _MATCH_WINDOW, or None.
+    """
+    best = None
+    best_delta = _MATCH_WINDOW
+    for m in matches:
+        if predicate is not None and not predicate(m):
+            continue
+        instant = match_utc_instant(m)
+        if instant is None:
+            continue
+        delta = abs(instant - kickoff_utc)
+        if delta <= best_delta:
+            best_delta = delta
+            best = m
+    return best
+
+
 def resolve_match_number(matches: list[dict], home: str, away: str,
                          kickoff_utc: datetime) -> int | None:
     """Find a match_number by canonical team pair + UTC kickoff instant.
