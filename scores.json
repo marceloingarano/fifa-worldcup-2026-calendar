@@ -361,7 +361,7 @@
   },
   "73": {
     "score_home": 0,
-    "score_away": 0,
-    "status": "LIVE"
+    "score_away": 1,
+    "status": "FT"
   }
 }
