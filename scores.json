@@ -368,5 +368,10 @@
     "score_home": 2,
     "score_away": 1,
     "status": "FT"
+  },
+  "74": {
+    "score_home": 0,
+    "score_away": 0,
+    "status": "LIVE"
   }
 }
