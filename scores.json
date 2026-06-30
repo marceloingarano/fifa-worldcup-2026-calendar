@@ -380,8 +380,8 @@
     "status": "FT"
   },
   "78": {
-    "score_home": 0,
-    "score_away": 0,
-    "status": "LIVE"
+    "score_home": 1,
+    "score_away": 2,
+    "status": "FT"
   }
 }
