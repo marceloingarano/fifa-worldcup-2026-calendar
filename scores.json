@@ -430,8 +430,13 @@
     "status": "FT"
   },
   "86": {
+    "score_home": 3,
+    "score_away": 2,
+    "status": "FT"
+  },
+  "87": {
     "score_home": 1,
-    "score_away": 1,
-    "status": "LIVE"
+    "score_away": 0,
+    "status": "FT"
   }
 }
