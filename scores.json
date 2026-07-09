@@ -375,8 +375,8 @@
     "status": "FT"
   },
   "75": {
-    "score_home": 1,
-    "score_away": 1,
+    "score_home": 3,
+    "score_away": 4,
     "status": "FT"
   },
   "78": {
@@ -425,8 +425,8 @@
     "status": "FT"
   },
   "88": {
-    "score_home": 1,
-    "score_away": 1,
+    "score_home": 3,
+    "score_away": 5,
     "status": "FT"
   },
   "86": {
@@ -475,8 +475,8 @@
     "status": "FT"
   },
   "96": {
-    "score_home": 0,
-    "score_away": 0,
+    "score_home": 4,
+    "score_away": 3,
     "status": "FT"
   }
 }
