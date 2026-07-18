@@ -510,8 +510,8 @@
     "status": "FT"
   },
   "103": {
-    "score_home": 0,
-    "score_away": 4,
-    "status": "LIVE"
+    "score_home": 4,
+    "score_away": 6,
+    "status": "FT"
   }
 }
