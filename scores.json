@@ -515,8 +515,8 @@
     "status": "FT"
   },
   "104": {
-    "score_home": 0,
+    "score_home": 1,
     "score_away": 0,
-    "status": "LIVE"
+    "status": "FT"
   }
 }
