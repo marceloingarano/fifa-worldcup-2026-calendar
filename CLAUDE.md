@@ -107,10 +107,16 @@ Rules:
 
 ## Automation (GitHub Actions)
 
-| Workflow | When | What |
+> **Tournament ended 2026-07-19.** The `schedule:` triggers of `update-scores.yml`
+> and `update-knockout.yml` are commented out (disabled). Both keep
+> `workflow_dispatch` for manual runs. `tests.yml` still runs on every push/PR.
+> To revive for a future tournament: uncomment the schedules and update the
+> month field / date gates.
+
+| Workflow | When (when active) | What |
 |---|---|---|
-| `update-scores.yml` | Every 20min, all day, Jun–Jul (in-job date check limits to Jun 11 – Jul 19) | Fetches scores → regenerates .ics → auto-commit |
-| `update-knockout.yml` | Daily 06:00 UTC, Jun 18 – Jul 19 | Resolves knockout placeholders → auto-commit |
+| `update-scores.yml` | Every 20min, all day, Jun–Jul (in-job date check limits to Jun 11 – Jul 19) — **currently disabled** | Fetches scores → regenerates .ics → auto-commit |
+| `update-knockout.yml` | Daily 06:00 UTC, Jun 18 – Jul 19 — **currently disabled** | Resolves knockout placeholders → auto-commit |
 | `tests.yml` | Every push/PR | Unit tests + E2E consistency |
 
 Scheduled triggers skip execution outside tournament window via date check.

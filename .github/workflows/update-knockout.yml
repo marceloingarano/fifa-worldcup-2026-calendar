@@ -1,10 +1,13 @@
 name: Update Knockout Teams
 
 on:
-  schedule:
-    # Once daily at 06:00 UTC (03:00 BRT) — after all matches of the day
-    - cron: '0 6 * 6-7 *'
-  workflow_dispatch: # Allow manual trigger
+  # TOURNAMENT ENDED 2026-07-19. Automatic knockout resolution is disabled.
+  # Re-enable for a future tournament by uncommenting and updating the date gate.
+  #
+  # schedule:
+  #   # Once daily at 06:00 UTC (03:00 BRT) — after all matches of the day
+  #   - cron: '0 6 * 6-7 *'
+  workflow_dispatch: # Manual trigger still available
 
 jobs:
   update:

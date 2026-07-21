@@ -2,6 +2,14 @@
 
 Guia de procedimentos para manter o calendário atualizado durante a Copa do Mundo.
 
+> **🏆 Torneio encerrado em 19/07/2026 (Espanha 1×0 Argentina).** A automação
+> (`update-scores.yml` e `update-knockout.yml`) está **desativada** — os `schedule:`
+> foram comentados, mantendo `workflow_dispatch` para runs manuais. O `.ics`
+> permanece publicado como **arquivo histórico** (104/104 jogos com placar) e o
+> refresh foi ampliado de 6h para 7 dias. Assinaturas existentes continuam
+> funcionando. Os procedimentos abaixo valem para uma futura edição — para
+> reativar, descomente os `schedule:` e ajuste o campo de mês / gate de data.
+
 ## Pré-requisitos
 
 1. Python 3.12+ instalado

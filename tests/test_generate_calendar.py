@@ -166,9 +166,10 @@ class TestCreateCalendar:
         assert cal["method"] == "PUBLISH"
 
     def test_calendar_refresh_interval(self):
+        # Tournament ended: static archive polls weekly (P7D), not every 6h.
         cal = create_calendar()
         ical_bytes = cal.to_ical()
-        assert b"PT6H" in ical_bytes
+        assert b"P7D" in ical_bytes
 
 
 class TestAddMatchEvent:
