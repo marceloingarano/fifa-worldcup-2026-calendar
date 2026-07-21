@@ -64,8 +64,11 @@ def create_calendar() -> Calendar:
     cal.add("method", "PUBLISH")
     cal.add("x-wr-calname", "Copa do Mundo FIFA 2026")
     cal.add("x-wr-timezone", "America/Sao_Paulo")
-    cal.add("refresh-interval;value=duration", "PT6H")
-    cal.add("x-published-ttl", "PT6H")
+    # Tournament ended 2026-07-19; the calendar is now a static archive, so poll
+    # weekly instead of every 6h to avoid pointless refreshes on subscribers'
+    # devices. Restore PT6H if live updates resume for a future tournament.
+    cal.add("refresh-interval;value=duration", "P7D")
+    cal.add("x-published-ttl", "P7D")
     return cal
 
 

@@ -2,6 +2,12 @@
 
 All 104 matches on your phone calendar. Free, auto-updated with live scores.
 
+> **🏆 Tournament ended 2026-07-19 (Spain 1×0 Argentina).** The automation is
+> disabled and the calendar is now a static historical archive with all 104
+> results. It stays published — existing subscriptions keep working. To revive
+> for a future tournament, re-enable the commented `schedule:` triggers in
+> `.github/workflows/` and restore `PT6H` refresh in `generate_calendar.py`.
+
 ## Subscribe
 
 ```

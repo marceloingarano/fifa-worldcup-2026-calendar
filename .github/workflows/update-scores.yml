@@ -1,15 +1,19 @@
 name: Update Scores
 
 on:
-  schedule:
-    # Every 20 minutes, ALL DAY, in June & July. Matches span 12 timezones and
-    # kick off across the full 16:00–04:00 UTC range; running 24h removes any
-    # coverage gap and sidesteps timezone math (GitHub cron is always UTC). The
-    # in-job date check still limits actual work to the tournament window.
-    # Offset minutes (9,29,49) instead of */20 to avoid GitHub's on-the-hour
-    # scheduler congestion, which delays/drops runs at :00,:20,... See OPERATIONS.md.
-    - cron: '9,29,49 * * 6-7 *'
-  workflow_dispatch: # Manual trigger (skips date check for testing)
+  # TOURNAMENT ENDED 2026-07-19 (Spain champion). Automatic scores are disabled.
+  # The schedule below is intentionally commented out — re-enable it for a future
+  # tournament by uncommenting and updating the month field / date gate.
+  #
+  # schedule:
+  #   # Every 20 minutes, ALL DAY, in June & July. Matches span 12 timezones and
+  #   # kick off across the full 16:00–04:00 UTC range; running 24h removes any
+  #   # coverage gap and sidesteps timezone math (GitHub cron is always UTC). The
+  #   # in-job date check still limits actual work to the tournament window.
+  #   # Offset minutes (9,29,49) instead of */20 to avoid GitHub's on-the-hour
+  #   # scheduler congestion, which delays/drops runs at :00,:20,... See OPERATIONS.md.
+  #   - cron: '9,29,49 * * 6-7 *'
+  workflow_dispatch: # Manual trigger still available (e.g. to fix a late correction)
 
 jobs:
   update:
